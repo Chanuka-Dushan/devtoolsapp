@@ -1,0 +1,3 @@
+# Google AdSense ads.txt configuration
+# Replace pub-0000000000000000 with your real Google AdSense Publisher ID (e.g. from AdSense Console -> Account -> Settings)
+google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0

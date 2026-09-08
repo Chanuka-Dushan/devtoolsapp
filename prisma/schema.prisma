@@ -1,0 +1,217 @@
+// Prisma Schema for DevTools Platform
+// Database: PostgreSQL
+// ORM: Prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── User ────────────────────────────────────────────────────────────────────
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  role          UserRole  @default(USER)
+
+  // Relations
+  accounts   Account[]
+  sessions   Session[]
+  toolUsages ToolUsage[]
+  articles   Article[]
+  tutorials  Tutorial[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  USER
+  PRO
+  ADMIN
+}
+
+// ─── Auth.js Tables ──────────────────────────────────────────────────────────
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─── Tool Usage Tracking ─────────────────────────────────────────────────────
+model ToolUsage {
+  id        String   @id @default(cuid())
+  toolSlug  String
+  userId    String?
+  sessionId String?
+  createdAt DateTime @default(now())
+  // Store non-sensitive metadata like input size, operation type, etc.
+  metadata  Json?
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([toolSlug])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("tool_usages")
+}
+
+// ─── Categories & Tags ───────────────────────────────────────────────────────
+model Category {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  slug        String     @unique
+  description String?
+  color       String?
+  createdAt   DateTime   @default(now())
+  articles    Article[]
+  tutorials   Tutorial[]
+
+  @@map("categories")
+}
+
+model Tag {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  slug      String     @unique
+  createdAt DateTime   @default(now())
+  articles  Article[]
+  tutorials Tutorial[]
+
+  @@map("tags")
+}
+
+// ─── Articles (Blog) ─────────────────────────────────────────────────────────
+model Article {
+  id             String        @id @default(cuid())
+  title          String
+  slug           String        @unique
+  excerpt        String?       @db.Text
+  content        String        @db.Text
+  featuredImage  String?
+  status         ContentStatus @default(DRAFT)
+  publishedAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  viewCount      Int           @default(0)
+  // SEO
+  metaTitle       String?
+  metaDescription String?      @db.Text
+
+  // Relations
+  authorId   String
+  author     User       @relation(fields: [authorId], references: [id])
+  categoryId String?
+  category   Category?  @relation(fields: [categoryId], references: [id])
+  tags       Tag[]
+
+  @@index([slug])
+  @@index([status, publishedAt])
+  @@map("articles")
+}
+
+// ─── Tutorials ───────────────────────────────────────────────────────────────
+model Tutorial {
+  id             String        @id @default(cuid())
+  title          String
+  slug           String        @unique
+  excerpt        String?       @db.Text
+  content        String        @db.Text
+  featuredImage  String?
+  status         ContentStatus @default(DRAFT)
+  difficulty     Difficulty    @default(BEGINNER)
+  estimatedMins  Int?
+  publishedAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  viewCount      Int           @default(0)
+  // SEO
+  metaTitle       String?
+  metaDescription String?      @db.Text
+
+  // Relations
+  authorId   String
+  author     User       @relation(fields: [authorId], references: [id])
+  categoryId String?
+  category   Category?  @relation(fields: [categoryId], references: [id])
+  tags       Tag[]
+
+  @@index([slug])
+  @@index([status, publishedAt])
+  @@map("tutorials")
+}
+
+// ─── News Articles ───────────────────────────────────────────────────────────
+model NewsArticle {
+  id          String        @id @default(cuid())
+  title       String
+  slug        String        @unique
+  summary     String        @db.Text
+  commentary  String?       @db.Text
+  sourceUrl   String?
+  sourceName  String?
+  sourceDate  DateTime?
+  featuredImage String?
+  status      ContentStatus @default(DRAFT)
+  publishedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([slug])
+  @@index([status, publishedAt])
+  @@map("news_articles")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum Difficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}

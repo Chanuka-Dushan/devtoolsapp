@@ -77,6 +77,14 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
+  icons: {
+    icon: [
+      { url: "/tool.png" },
+      { url: "/tool.png", sizes: "512x512", type: "image/png" },
+    ],
+    shortcut: "/tool.png",
+    apple: "/tool.png",
+  },
   manifest: "/manifest.json",
 };
 
@@ -95,6 +103,8 @@ export default function RootLayout({
       <head>
         {/* Inline theme script to prevent flash of wrong theme */}
         <script dangerouslySetInnerHTML={{ __html: ThemeScript }} />
+        <link rel="icon" href="/tool.png" type="image/png" sizes="any" />
+        <link rel="apple-touch-icon" href="/tool.png" />
         {/* Google AdSense */}
         <script
           async

@@ -1,0 +1,17 @@
+{
+  "name": "DevTools Platform",
+  "short_name": "DevTools",
+  "description": "Fast, free developer tools and AI-powered utilities.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090d16",
+  "theme_color": "#090d16",
+  "icons": [
+    {
+      "src": "/tool.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

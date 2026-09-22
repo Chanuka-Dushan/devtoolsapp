@@ -3,7 +3,6 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { ThemeScript } from "@/components/layout/ThemeToggle";
-import { GoogleAdSense } from "@/components/ads/GoogleAdSense";
 import "./globals.css";
 
 // ─── Fonts ────────────────────────────────────────────────────────────────────
@@ -96,9 +95,14 @@ export default function RootLayout({
       <head>
         {/* Inline theme script to prevent flash of wrong theme */}
         <script dangerouslySetInnerHTML={{ __html: ThemeScript }} />
+        {/* Google AdSense */}
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8977352924106394"
+          crossOrigin="anonymous"
+        />
       </head>
       <body className="min-h-dvh flex flex-col antialiased">
-        <GoogleAdSense />
         <Header />
         <main className="flex-1 w-full">{children}</main>
         <Footer />

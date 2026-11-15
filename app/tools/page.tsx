@@ -17,6 +17,7 @@ import {
   Image as ImageIcon,
   Scaling,
   Sparkles,
+  Film,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { DEVELOPER_TOOLS } from "@/lib/tools/registry";
@@ -46,6 +47,7 @@ const iconMap: Record<string, React.ElementType> = {
   Image: ImageIcon,
   Scaling,
   Sparkles,
+  Film,
 };
 
 const categoryLabels: Record<string, string> = {
@@ -54,6 +56,7 @@ const categoryLabels: Record<string, string> = {
   generators: "Generators",
   pdf: "PDF & Document Converters",
   images: "Image Processing & Converters",
+  media: "Video & Media Tools",
 };
 
 export default function ToolsPage() {

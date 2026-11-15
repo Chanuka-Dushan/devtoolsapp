@@ -5,7 +5,7 @@
  * Adding a new tool = adding an entry here.
  */
 
-export type ToolCategory = "developer" | "ai" | "encoding" | "generators" | "pdf" | "images";
+export type ToolCategory = "developer" | "ai" | "encoding" | "generators" | "pdf" | "images" | "media";
 
 export interface ToolConfig {
   slug: string;
@@ -380,12 +380,52 @@ export const TOOLS: ToolConfig[] = [
     path: "/tools/gemini-watermark-remover",
     keywords: ["gemini watermark remover", "remove gemini watermark", "remove ai watermark", "watermark remover"],
   },
+
+  // ── Video & Media Tools ────────────────────────────────────
+  {
+    slug: "video-caption-generator",
+    name: "AI Video Caption & Subtitle Generator",
+    description: "Generate viral auto-captions with voice sync, animated styles, multilingual translation (Sinhala, English & more), and MP4 export.",
+    longDescription:
+      "All-in-one AI video caption studio with automatic speech-to-text, kinetic word-level voice sync, viral templates (TikTok, Alex Hormozi, MrBeast), Sinhala and multi-language translation, and client-side MP4 export.",
+    category: "media",
+    tags: [
+      "ai",
+      "video",
+      "captions",
+      "subtitles",
+      "sinhala",
+      "transcribe",
+      "speech to text",
+      "translation",
+      "whisper",
+      "tiktok",
+      "reels",
+      "shorts",
+    ],
+    icon: "Film",
+    isAI: true,
+    isFree: true,
+    isNew: true,
+    isPopular: true,
+    path: "/tools/video-caption-generator",
+    keywords: [
+      "video captions",
+      "auto subtitles",
+      "sinhala subtitles",
+      "tiktok captions generator",
+      "alex hormozi subtitles",
+      "ai subtitle generator",
+      "speech to text video",
+      "translate subtitles",
+    ],
+  },
 ];
 
 /**
  * Get all non-AI developer tools.
  */
-export const DEVELOPER_TOOLS = TOOLS.filter((t) => !t.isAI);
+export const DEVELOPER_TOOLS = TOOLS.filter((t) => !t.isAI || t.category === "media");
 
 /**
  * Get all AI tools.

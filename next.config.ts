@@ -29,7 +29,7 @@ const nextConfig: NextConfig = {
         source: "/(.*)",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
           { key: "X-XSS-Protection", value: "1; mode=block" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
@@ -37,6 +37,20 @@ const nextConfig: NextConfig = {
             value: "camera=(), microphone=(), geolocation=()",
           },
         ],
+      },
+    ];
+  },
+
+  // Rewrites to proxy local Caption Tool Studio and API
+  async rewrites() {
+    return [
+      {
+        source: "/caption-studio/:path*",
+        destination: "http://localhost:5173/:path*",
+      },
+      {
+        source: "/caption-api/:path*",
+        destination: "http://localhost:8000/:path*",
       },
     ];
   },

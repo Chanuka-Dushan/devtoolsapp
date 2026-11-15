@@ -19,6 +19,7 @@ import {
   Image as ImageIcon,
   Scaling,
   Wand2,
+  Film,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
@@ -26,6 +27,7 @@ import { Button } from "@/components/ui/Button";
 import { SearchModal } from "./SearchModal";
 
 const mediaNav = [
+  { href: "/tools/video-caption-generator", label: "AI Video Captions", icon: Film },
   { href: "/tools/image-converter", label: "Image Converter", icon: ImageIcon },
   { href: "/tools/image-resizer", label: "Image Resizer", icon: Scaling },
   { href: "/tools/gemini-watermark-remover", label: "Gemini Watermark", icon: Wand2 },
@@ -49,6 +51,7 @@ const devToolsNav = [
 const toolsNav = [...mediaNav, ...devToolsNav];
 
 const aiNav = [
+  { href: "/tools/video-caption-generator", label: "AI Video Captions", icon: Film },
   { href: "/ai/cover-letter-writer", label: "Cover Letter Writer", icon: FileText },
   { href: "/ai/code-explainer", label: "Code Explainer", icon: Sparkles },
   { href: "/ai/debugger", label: "AI Debugger", icon: Cpu },

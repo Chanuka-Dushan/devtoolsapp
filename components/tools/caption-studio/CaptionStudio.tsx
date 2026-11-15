@@ -1,0 +1,616 @@
+"use client";
+
+import React, { useState, useRef, useEffect } from "react";
+import { Header } from "./Header";
+import { VideoPlayer } from "./VideoPlayer";
+import { Timeline } from "./Timeline";
+import { Sidebar } from "./Sidebar";
+import { ExportModal } from "./ExportModal";
+import { ShortcutsModal } from "./ShortcutsModal";
+import { TranslationModal } from "./TranslationModal";
+import { STYLE_PRESETS, INITIAL_CAPTIONS, SINHALA_DEMO_CAPTIONS } from "./presets";
+import {
+  rechunkCaptionsToTwoLinesMax,
+  formatToMaxTwoLines,
+  convertToSingleLineRapidFrames,
+} from "./utils/text";
+import { detectAspectRatio } from "./utils/resolution";
+import { captionFetch } from "./api";
+import { CaptionSegment, StylePreset, VideoFilters, VideoResolution } from "./types";
+
+export function CaptionStudio() {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Video State
+  const [videoSrc, setVideoSrc] = useState<string>("/samples/sample.mp4");
+  const [videoPath, setVideoPath] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState<number>(0);
+  const [duration, setDuration] = useState<number>(23.6);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [playbackRate, setPlaybackRate] = useState<number>(1.0);
+  const [volume, setVolume] = useState<number>(1.0);
+  const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [aspectRatio, setAspectRatio] = useState<string>("16:9");
+  const [videoResolution, setVideoResolution] = useState<VideoResolution>({
+    width: 1280,
+    height: 720,
+    aspectRatio: "16:9",
+    label: "1280 × 720 (16:9)",
+    category: "16:9 (Widescreen HD)",
+    quality: "720p HD",
+  });
+
+  // Video Filters
+  const [videoFilters, setVideoFilters] = useState<VideoFilters>({
+    brightness: 100,
+    contrast: 100,
+    saturate: 100,
+    grayscale: 0,
+    blur: 0,
+  });
+
+  // Trimming State
+  const [trimStart, setTrimStart] = useState<number>(0.0);
+  const [trimEnd, setTrimEnd] = useState<number>(23.6);
+
+  // Captions & Styling
+  const [captions, setCaptions] = useState<CaptionSegment[]>(INITIAL_CAPTIONS);
+  const [selectedCaptionId, setSelectedCaptionId] = useState<number | string | null>(1);
+  const [style, setStyle] = useState<StylePreset>(STYLE_PRESETS[0]);
+
+  // Transcribing Status
+  const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
+  const [whisperProgress, setWhisperProgress] = useState<string>("");
+  const [backendOnline, setBackendOnline] = useState<boolean>(true);
+
+  // Modals
+  const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState<boolean>(false);
+  const [isTranslateOpen, setIsTranslateOpen] = useState<boolean>(false);
+
+  // Check backend health on mount
+  useEffect(() => {
+    captionFetch("/api/health")
+      .then((res) => res.json())
+      .then((data) => {
+        setBackendOnline(data.status === "ok");
+      })
+      .catch(() => setBackendOnline(false));
+  }, []);
+
+  // Sync video time
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleTimeUpdate = () => {
+      setCurrentTime(video.currentTime);
+      if (trimEnd && video.currentTime >= trimEnd && !video.paused) {
+        video.pause();
+        setIsPlaying(false);
+      }
+    };
+
+    const handleLoadedMetadata = () => {
+      setDuration(video.duration);
+      if (!trimEnd || trimEnd === 23.6) {
+        setTrimEnd(video.duration);
+      }
+      if (video.videoWidth && video.videoHeight) {
+        const detected = detectAspectRatio(video.videoWidth, video.videoHeight);
+        setVideoResolution(detected);
+        setAspectRatio(detected.aspectRatio);
+      }
+    };
+
+    const handleEnded = () => {
+      setIsPlaying(false);
+    };
+
+    video.addEventListener("timeupdate", handleTimeUpdate);
+    video.addEventListener("loadedmetadata", handleLoadedMetadata);
+    video.addEventListener("ended", handleEnded);
+
+    return () => {
+      video.removeEventListener("timeupdate", handleTimeUpdate);
+      video.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      video.removeEventListener("ended", handleEnded);
+    };
+  }, [trimEnd]);
+
+  // Play / Pause toggle
+  const togglePlayPause = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (video.paused) {
+      if (currentTime >= trimEnd) {
+        video.currentTime = trimStart;
+      }
+      video.play().then(() => setIsPlaying(true)).catch(console.error);
+    } else {
+      video.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  // Seek video
+  const handleSeek = (newTime: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+    const clamped = Math.max(0, Math.min(duration, newTime));
+    video.currentTime = clamped;
+    setCurrentTime(clamped);
+  };
+
+  // Frame stepping (25 fps = 0.04s per frame)
+  const handleStepFrame = (deltaFrames: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (!video.paused) {
+      video.pause();
+      setIsPlaying(false);
+    }
+    const newTime = Math.max(0, Math.min(duration, video.currentTime + deltaFrames * 0.04));
+    video.currentTime = newTime;
+    setCurrentTime(newTime);
+  };
+
+  // Speed rate change
+  const handleSetPlaybackRate = (rate: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.playbackRate = rate;
+    setPlaybackRate(rate);
+  };
+
+  // Volume change
+  const handleVolumeChange = (newVol: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.volume = newVol;
+    setVolume(newVol);
+    if (newVol > 0 && isMuted) {
+      setIsMuted(false);
+      video.muted = false;
+    }
+  };
+
+  const handleToggleMute = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = !isMuted;
+    setIsMuted(!isMuted);
+  };
+
+  // Caption CRUD operations
+  const handleUpdateCaptionText = (id: number | string, newText: string) => {
+    setCaptions((prev) => prev.map((c) => (c.id === id ? { ...c, text: newText } : c)));
+  };
+
+  const handleUpdateCaptionTime = (id: number | string, newStart: number, newEnd: number) => {
+    setCaptions((prev) =>
+      prev.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              start: Math.round(newStart * 100) / 100,
+              end: Math.round(newEnd * 100) / 100,
+            }
+          : c
+      )
+    );
+  };
+
+  const handleAddCaption = (start: number, end: number, text = "New Subtitle") => {
+    const newId = Date.now();
+    const newCap: CaptionSegment = {
+      id: newId,
+      start: Math.round(start * 100) / 100,
+      end: Math.round(end * 100) / 100,
+      text: text,
+      words: text.split(" ").map((w, i) => ({
+        word: w,
+        start: start + i * 0.3,
+        end: start + (i + 1) * 0.3,
+      })),
+    };
+    const updated = [...captions, newCap].sort((a, b) => a.start - b.start);
+    setCaptions(updated);
+    setSelectedCaptionId(newId);
+  };
+
+  const handleDeleteCaption = (id: number | string) => {
+    setCaptions((prev) => prev.filter((c) => c.id !== id));
+    if (selectedCaptionId === id) {
+      setSelectedCaptionId(null);
+    }
+  };
+
+  const handleSplitCaption = (splitTime: number) => {
+    const target = captions.find((c) => splitTime > c.start + 0.3 && splitTime < c.end - 0.3);
+    if (!target) return;
+
+    const words = target.text.split(" ");
+    const half = Math.max(1, Math.floor(words.length / 2));
+    const text1 = words.slice(0, half).join(" ");
+    const text2 = words.slice(half).join(" ");
+
+    const newCap1: CaptionSegment = { ...target, end: Math.round(splitTime * 100) / 100, text: text1 };
+    const newCap2: CaptionSegment = {
+      id: Date.now(),
+      start: Math.round(splitTime * 100) / 100,
+      end: target.end,
+      text: text2,
+    };
+
+    setCaptions((prev) =>
+      prev
+        .map((c) => (c.id === target.id ? newCap1 : c))
+        .concat(newCap2)
+        .sort((a, b) => a.start - b.start)
+    );
+    setSelectedCaptionId(newCap2.id);
+  };
+
+  // Upload custom video
+  const handleUploadFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await captionFetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        const fullUrl = data.url?.startsWith("http")
+          ? data.url
+          : data.url?.startsWith("/static")
+          ? `/caption-api${data.url}`
+          : data.url;
+        setVideoSrc(fullUrl);
+        setVideoPath(data.path);
+        setCaptions([]);
+        if (data.width && data.height) {
+          const detected = detectAspectRatio(data.width, data.height);
+          setVideoResolution(detected);
+          setAspectRatio(detected.aspectRatio);
+        }
+        triggerAutoTranscribe("tiny", "auto", data.path);
+      }
+    } catch (err) {
+      console.error("Upload failed", err);
+      const localUrl = URL.createObjectURL(file);
+      setVideoSrc(localUrl);
+    }
+  };
+
+  // Load sample demo video
+  const handleLoadDemo = () => {
+    setVideoSrc("/samples/sample.mp4");
+    setVideoPath(null);
+    setVideoResolution({
+      width: 1280,
+      height: 720,
+      aspectRatio: "16:9",
+      label: "1280 × 720 (16:9)",
+      category: "16:9 (Widescreen HD)",
+      quality: "720p HD",
+    });
+    setAspectRatio("16:9");
+    setCaptions(INITIAL_CAPTIONS);
+    setTrimStart(0.0);
+    setTrimEnd(23.6);
+    handleSeek(0);
+  };
+
+  // Load Sinhala demo captions (සිංහල උපසිරැසි)
+  const handleLoadSinhalaDemo = () => {
+    setVideoSrc("/samples/sample.mp4");
+    setVideoPath(null);
+    setVideoResolution({
+      width: 1280,
+      height: 720,
+      aspectRatio: "16:9",
+      label: "1280 × 720 (16:9)",
+      category: "16:9 (Widescreen HD)",
+      quality: "720p HD",
+    });
+    setAspectRatio("16:9");
+    setCaptions(SINHALA_DEMO_CAPTIONS);
+    const sinhalaPreset = STYLE_PRESETS.find((p) => p.id === "sinhala-modern") || STYLE_PRESETS[3];
+    setStyle(sinhalaPreset);
+    setTrimStart(0.0);
+    setTrimEnd(23.6);
+    handleSeek(0);
+  };
+
+  // Convert captions to dynamic 1-line rapid voice sync frames
+  const handleConvertToRapidOneLine = () => {
+    const rapidCaptions = convertToSingleLineRapidFrames(captions, 4);
+    setCaptions(rapidCaptions);
+  };
+
+  // Re-chunk and enforce max 2 lines across all captions
+  const handleEnforceTwoLines = () => {
+    const rechunked = rechunkCaptionsToTwoLinesMax(captions, 8);
+    setCaptions(rechunked);
+  };
+
+  // Auto split a single caption if it exceeds 2 lines
+  const handleAutoSplitCaption = (id: number | string) => {
+    setCaptions((prev) =>
+      prev.map((c) => {
+        if (c.id === id) {
+          return { ...c, text: formatToMaxTwoLines(c.text) };
+        }
+        return c;
+      })
+    );
+  };
+
+  // Apply Subtitle Translations
+  const handleApplyTranslations = (
+    translations: Array<{ id: number | string; translatedText: string }>,
+    targetLang: string,
+    autoSwitchSinhalaStyle: boolean
+  ) => {
+    const transMap = new Map();
+    translations.forEach((t) => transMap.set(String(t.id), t.translatedText));
+
+    setCaptions((prev) =>
+      prev.map((c) => {
+        const translated = transMap.get(String(c.id));
+        if (!translated) return c;
+
+        const rawWords = translated.trim().replace(/\n/g, " ").split(/\s+/).filter(Boolean);
+        const totalChars = rawWords.reduce((sum: number, w: string) => sum + w.length, 0);
+        const totalDur = Math.max(0.4, c.end - c.start);
+        let accTime = c.start;
+
+        const words = rawWords.map((w: string) => {
+          const fraction = w.length / Math.max(1, totalChars);
+          const wDur = Math.max(0.12, fraction * totalDur);
+          const ws = accTime;
+          const we = Math.min(c.end, ws + wDur);
+          accTime = we;
+          return {
+            word: w,
+            start: Math.round(ws * 100) / 100,
+            end: Math.round(we * 100) / 100,
+          };
+        });
+
+        return {
+          ...c,
+          text: translated,
+          words: words,
+        };
+      })
+    );
+
+    if (targetLang === "si" && autoSwitchSinhalaStyle) {
+      const sinhalaPreset = STYLE_PRESETS.find((p) => p.id === "sinhala-modern") || STYLE_PRESETS[3];
+      setStyle(sinhalaPreset);
+    }
+  };
+
+  // Auto transcribe with Whisper
+  const triggerAutoTranscribe = async (
+    modelName = "tiny",
+    language = "auto",
+    customPath: string | null = null
+  ) => {
+    setIsTranscribing(true);
+    setWhisperProgress("Extracting audio & transcribing with Whisper AI...");
+
+    const formData = new FormData();
+    formData.append("model_name", modelName);
+    if (language !== "auto") {
+      formData.append("language", language);
+    }
+    if (customPath || videoPath) {
+      formData.append("video_path", customPath || (videoPath as string));
+    }
+
+    try {
+      const res = await captionFetch("/api/transcribe", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || "Transcription failed");
+      }
+
+      const data = await res.json();
+      if (data.width && data.height) {
+        const detected = detectAspectRatio(data.width, data.height);
+        setVideoResolution(detected);
+        setAspectRatio(detected.aspectRatio);
+      }
+      if (data.segments && data.segments.length > 0) {
+        setCaptions(data.segments);
+        if (data.duration) {
+          setDuration(data.duration);
+          setTrimEnd(data.duration);
+        }
+      }
+    } catch (e: any) {
+      alert("Transcription Error: " + e.message);
+    } finally {
+      setIsTranscribing(false);
+      setWhisperProgress("");
+    }
+  };
+
+  // Global Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (["INPUT", "TEXTAREA", "SELECT"].includes((e.target as HTMLElement)?.tagName)) return;
+
+      if (e.code === "Space") {
+        e.preventDefault();
+        togglePlayPause();
+      } else if (e.code === "ArrowLeft") {
+        e.preventDefault();
+        handleStepFrame(-1);
+      } else if (e.code === "ArrowRight") {
+        e.preventDefault();
+        handleStepFrame(1);
+      } else if (e.key === "j" || e.key === "J") {
+        handleSeek(Math.max(0, currentTime - 5));
+      } else if (e.key === "l" || e.key === "L") {
+        handleSeek(Math.min(duration, currentTime + 5));
+      } else if (e.key === "s" || e.key === "S") {
+        handleSplitCaption(currentTime);
+      } else if (e.code === "Delete" || e.code === "Backspace") {
+        if (selectedCaptionId) {
+          handleDeleteCaption(selectedCaptionId);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isPlaying, currentTime, duration, selectedCaptionId, trimEnd, trimStart]);
+
+  const activeCaption = captions.find((c) => currentTime >= c.start && currentTime <= c.end);
+
+  return (
+    <div className="flex flex-col h-[850px] w-full bg-slate-950 text-slate-100 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden font-sans select-none">
+      {/* Top Header */}
+      <Header
+        aspectRatio={aspectRatio}
+        setAspectRatio={setAspectRatio}
+        videoResolution={videoResolution}
+        onLoadDemo={handleLoadDemo}
+        onLoadSinhalaDemo={handleLoadSinhalaDemo}
+        onUploadClick={() => fileInputRef.current?.click()}
+        onOpenTranslate={() => setIsTranslateOpen(true)}
+        onOpenExport={() => setIsExportOpen(true)}
+        onOpenShortcuts={() => setIsShortcutsOpen(true)}
+        isTranscribing={isTranscribing}
+        backendOnline={backendOnline}
+      />
+
+      {/* Hidden File Input for Video Upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="video/mp4,video/webm,video/quicktime,video/x-matroska"
+        onChange={handleUploadFile}
+        className="hidden"
+      />
+
+      {/* Center Layout: Video Viewport & Right Sidebar */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Main Video Stage */}
+        <VideoPlayer
+          videoRef={videoRef}
+          videoSrc={videoSrc}
+          currentTime={currentTime}
+          duration={duration}
+          isPlaying={isPlaying}
+          onPlayPause={togglePlayPause}
+          onSeek={handleSeek}
+          onStepFrame={handleStepFrame}
+          captions={captions}
+          activeCaption={activeCaption}
+          style={style}
+          onUpdateStyle={setStyle}
+          onEditCaptionText={handleUpdateCaptionText}
+          aspectRatio={aspectRatio}
+          videoResolution={videoResolution}
+          videoFilters={videoFilters}
+          playbackRate={playbackRate}
+          onSetPlaybackRate={handleSetPlaybackRate}
+          volume={volume}
+          isMuted={isMuted}
+          onToggleMute={handleToggleMute}
+          onVolumeChange={handleVolumeChange}
+        />
+
+        {/* Right Controls & Subtitle Editor Sidebar */}
+        <Sidebar
+          captions={captions}
+          selectedCaptionId={selectedCaptionId}
+          onSelectCaption={setSelectedCaptionId}
+          onUpdateCaptionText={handleUpdateCaptionText}
+          onUpdateCaptionTime={handleUpdateCaptionTime}
+          onAddCaption={handleAddCaption}
+          onDeleteCaption={handleDeleteCaption}
+          onSplitCaption={handleSplitCaption}
+          onConvertToRapidOneLine={handleConvertToRapidOneLine}
+          onEnforceTwoLines={handleEnforceTwoLines}
+          onAutoSplitCaption={handleAutoSplitCaption}
+          onOpenTranslate={() => setIsTranslateOpen(true)}
+          onSeek={handleSeek}
+          currentTime={currentTime}
+          style={style}
+          onUpdateStyle={setStyle}
+          onSelectPreset={setStyle}
+          videoFilters={videoFilters}
+          onUpdateFilters={setVideoFilters}
+          onAutoTranscribe={triggerAutoTranscribe}
+          isTranscribing={isTranscribing}
+          whisperProgress={whisperProgress}
+        />
+      </div>
+
+      {/* Bottom Multi-Track Timeline */}
+      <Timeline
+        currentTime={currentTime}
+        duration={duration}
+        onSeek={handleSeek}
+        captions={captions}
+        selectedCaptionId={selectedCaptionId}
+        onSelectCaption={setSelectedCaptionId}
+        onUpdateCaptionTime={handleUpdateCaptionTime}
+        onSplitCaption={handleSplitCaption}
+        onDeleteCaption={handleDeleteCaption}
+        onAddCaptionAtPlayhead={() =>
+          handleAddCaption(currentTime, Math.min(duration, currentTime + 2.5), "New Caption")
+        }
+        trimStart={trimStart}
+        trimEnd={trimEnd}
+        onUpdateTrim={(start, end) => {
+          setTrimStart(start);
+          setTrimEnd(end);
+        }}
+      />
+
+      {/* Export & Render Modal */}
+      <ExportModal
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        captions={captions}
+        style={style}
+        trimStart={trimStart}
+        trimEnd={trimEnd}
+        aspectRatio={aspectRatio}
+        videoResolution={videoResolution}
+        videoSrc={videoSrc}
+        videoPath={videoPath}
+      />
+
+      {/* Multilingual Subtitle Translation Modal */}
+      <TranslationModal
+        isOpen={isTranslateOpen}
+        onClose={() => setIsTranslateOpen(false)}
+        captions={captions}
+        onApplyTranslations={handleApplyTranslations}
+      />
+
+      {/* Keyboard Shortcuts Modal */}
+      <ShortcutsModal isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
+    </div>
+  );
+}

@@ -9,26 +9,18 @@ import {
   Languages,
   Sliders,
   Download,
-  CheckCircle2,
   Maximize2,
-  ExternalLink,
-  RefreshCw,
-  Play,
-  Volume2,
-  Layers,
-  Type,
-  Zap,
-  ShieldCheck,
-  HelpCircle,
   ChevronDown,
   Palette,
-  ArrowRight,
-  MonitorPlay,
+  Zap,
+  Play,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
+import { CaptionStudio } from "@/components/tools/caption-studio/CaptionStudio";
 
 const TEMPLATES = [
   {
@@ -169,12 +161,9 @@ const FAQS = [
 ];
 
 export default function VideoCaptionGeneratorPage() {
-  const [iframeKey, setIframeKey] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const studioContainerRef = useRef<HTMLDivElement>(null);
-
-  const studioUrl = "/caption-studio/";
 
   const toggleFullscreen = () => {
     if (!studioContainerRef.current) return;
@@ -187,130 +176,65 @@ export default function VideoCaptionGeneratorPage() {
     }
   };
 
-  const reloadStudio = () => {
-    setIframeKey((prev) => prev + 1);
-  };
-
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 space-y-16">
-      {/* ── Hero Section ───────────────────────────────────── */}
-      <div className="text-center space-y-5 max-w-4xl mx-auto">
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <Badge variant="primary" className="px-3 py-1 text-xs font-semibold gap-1.5 shadow-sm">
-            <Sparkles className="w-3.5 h-3.5 text-brand-400" />
-            OpenAI Whisper AI Powered
-          </Badge>
-          <Badge variant="secondary" className="px-3 py-1 text-xs font-semibold gap-1.5 border border-amber-500/30 text-amber-500">
-            🇱🇰 Sinhala & 50+ Languages
-          </Badge>
-          <Badge variant="default" className="px-3 py-1 text-xs font-semibold gap-1.5">
-            🔥 Viral Hormozi & TikTok Styles
-          </Badge>
-        </div>
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+      {/* ── Hero / Tool Header Section ────────────────────── */}
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-5">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="primary" className="px-2.5 py-0.5 text-xs font-semibold gap-1.5 shadow-sm">
+                <Sparkles className="w-3.5 h-3.5 text-brand-400" />
+                Whisper AI Speech-to-Text
+              </Badge>
+              <Badge
+                variant="secondary"
+                className="px-2.5 py-0.5 text-xs font-semibold gap-1.5 border border-amber-500/30 text-amber-500"
+              >
+                🇱🇰 Sinhala & 50+ Languages
+              </Badge>
+              <Badge variant="default" className="px-2.5 py-0.5 text-xs font-semibold gap-1.5">
+                🔥 Viral Creator Styles
+              </Badge>
+            </div>
+            <h1 className="text-2xl sm:text-4xl font-extrabold text-foreground tracking-tight">
+              AI Video Caption & Subtitle Generator
+            </h1>
+            <p className="text-muted text-sm sm:text-base max-w-3xl leading-relaxed">
+              Auto-transcribe speech into frame-synced animated subtitles. Choose viral creator presets
+              (Hormozi, MrBeast, TikTok), translate into 50+ languages including Sinhala, and render
+              high-resolution MP4s directly in your browser.
+            </p>
+          </div>
 
-        <h1 className="text-3xl sm:text-5xl font-black text-foreground tracking-tight leading-tight">
-          AI Video Caption & Subtitle Generator
-        </h1>
-
-        <p className="text-muted text-base sm:text-lg leading-relaxed max-w-2xl mx-auto">
-          Automatically transcribe voices into frame-synced animated subtitles. Choose viral creator
-          templates, translate across 50+ languages including Sinhala, and export high-definition MP4s in
-          seconds.
-        </p>
-
-        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-          <Button
-            size="lg"
-            className="gap-2 font-bold shadow-lg shadow-brand-500/20"
-            onClick={() => {
-              studioContainerRef.current?.scrollIntoView({ behavior: "smooth" });
-            }}
-          >
-            <Play className="w-4 h-4 fill-current" />
-            Open Caption Studio
-          </Button>
-
-          <a
-            href="http://localhost:5173"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border bg-surface text-foreground hover:bg-surface-elevated text-sm font-semibold transition-colors"
-          >
-            <ExternalLink className="w-4 h-4 text-muted" />
-            Launch in Full Tab
-          </a>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleFullscreen}
+              className="gap-1.5 text-xs font-medium cursor-pointer"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+              <span>Fullscreen Studio</span>
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* ── Embedded Interactive Caption Studio ─────────────── */}
+      {/* ── Native Interactive Caption Studio ──────────────── */}
       <div
         ref={studioContainerRef}
         id="studio-frame-container"
         className={cn(
-          "rounded-2xl border border-border bg-surface overflow-hidden shadow-2xl transition-all duration-300",
-          isFullscreen ? "fixed inset-0 z-50 rounded-none border-none" : "w-full"
+          "w-full transition-all duration-300",
+          isFullscreen ? "fixed inset-0 z-50 p-2 bg-slate-950 flex flex-col justify-center" : ""
         )}
       >
-        {/* Studio Window Bar */}
-        <div className="flex items-center justify-between px-4 py-3 bg-surface-elevated border-b border-border">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-red-500/80 inline-block" />
-              <span className="w-3 h-3 rounded-full bg-amber-500/80 inline-block" />
-              <span className="w-3 h-3 rounded-full bg-green-500/80 inline-block" />
-            </div>
-            <div className="h-4 w-px bg-border mx-1" />
-            <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-              <Film className="w-3.5 h-3.5 text-brand-500" />
-              <span>AutoCaption Studio v2.0</span>
-              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Whisper AI Active
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={reloadStudio}
-              title="Reload Studio"
-              className="p-1.5 text-muted hover:text-foreground rounded-lg hover:bg-surface transition-colors"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-            <button
-              onClick={toggleFullscreen}
-              title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Studio"}
-              className="p-1.5 text-muted hover:text-foreground rounded-lg hover:bg-surface transition-colors"
-            >
-              <Maximize2 className="w-4 h-4" />
-            </button>
-            <a
-              href="http://localhost:5173"
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Open standalone app"
-              className="p-1.5 text-muted hover:text-brand-500 rounded-lg hover:bg-surface transition-colors"
-            >
-              <ExternalLink className="w-4 h-4" />
-            </a>
-          </div>
-        </div>
-
-        {/* Studio iFrame Container */}
-        <div className="relative w-full bg-zinc-950" style={{ height: isFullscreen ? "calc(100vh - 49px)" : "780px" }}>
-          <iframe
-            key={iframeKey}
-            src={studioUrl}
-            title="AutoCaption Video Studio"
-            className="w-full h-full border-none"
-            allow="camera; microphone; display-capture; autoplay; clipboard-write;"
-          />
-        </div>
+        <CaptionStudio />
       </div>
 
       {/* ── Preset Caption Templates ───────────────────────── */}
-      <div className="space-y-6">
+      <div className="space-y-6 pt-4">
         <div className="text-center space-y-2">
           <Badge variant="secondary" className="text-xs font-semibold">
             Creator Presets
@@ -337,7 +261,6 @@ export default function VideoCaptionGeneratorPage() {
                   </span>
                 </div>
 
-                {/* Subtitle simulation card */}
                 <div
                   className={cn(
                     "rounded-lg p-4 h-24 flex items-center justify-center text-center shadow-inner relative overflow-hidden",
@@ -451,29 +374,6 @@ export default function VideoCaptionGeneratorPage() {
               </div>
             );
           })}
-        </div>
-      </div>
-
-      {/* ── Bottom CTA ─────────────────────────────────────── */}
-      <div className="text-center rounded-2xl bg-gradient-to-r from-brand-500/10 via-brand-500/5 to-transparent border border-brand-500/20 p-8 sm:p-12 space-y-4">
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground">
-          Ready to Create Viral Captioned Videos?
-        </h2>
-        <p className="text-muted text-sm sm:text-base max-w-xl mx-auto">
-          Start generating synchronized subtitles now with voice recognition, custom typography, and
-          instant Sinhala translation.
-        </p>
-        <div className="pt-2">
-          <Button
-            size="lg"
-            className="gap-2 font-bold shadow-lg shadow-brand-500/20"
-            onClick={() => {
-              studioContainerRef.current?.scrollIntoView({ behavior: "smooth" });
-            }}
-          >
-            <Sparkles className="w-4 h-4" />
-            Get Started Free
-          </Button>
         </div>
       </div>
     </div>

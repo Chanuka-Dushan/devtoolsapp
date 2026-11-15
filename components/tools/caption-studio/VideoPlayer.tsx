@@ -13,7 +13,8 @@ import {
   ChevronRight,
   Move,
   Check,
-  Edit2,
+  Upload,
+  Sparkles,
 } from "lucide-react";
 import { formatTimecode } from "./utils/time";
 import { splitCaptionIntoTwoLinesOfWords, isSinhala } from "./utils/text";
@@ -42,6 +43,9 @@ interface VideoPlayerProps {
   isMuted: boolean;
   onToggleMute: () => void;
   onVolumeChange: (vol: number) => void;
+  onDropVideo?: (file: File) => void;
+  isTranscribing?: boolean;
+  whisperProgress?: string;
 }
 
 export function VideoPlayer({
@@ -65,9 +69,13 @@ export function VideoPlayer({
   isMuted,
   onToggleMute,
   onVolumeChange,
+  onDropVideo,
+  isTranscribing,
+  whisperProgress,
 }: VideoPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDraggingCaption, setIsDraggingCaption] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const [dragStart, setDragStart] = useState({ mouseX: 0, mouseY: 0, initialPosX: 50, initialPosY: 80 });
   const [isEditingInline, setIsEditingInline] = useState(false);
   const [inlineEditText, setInlineEditText] = useState("");
@@ -219,6 +227,19 @@ export function VideoPlayer({
       {/* Video Viewport Container */}
       <div
         ref={containerRef}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragOver(true);
+        }}
+        onDragLeave={() => setIsDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDragOver(false);
+          const file = e.dataTransfer.files?.[0];
+          if (file) {
+            onDropVideo?.(file);
+          }
+        }}
         className={`relative rounded-2xl overflow-hidden shadow-2xl bg-black flex items-center justify-center border border-slate-800 group ${getContainerAspectClass()}`}
       >
         {/* HTML5 Video Element */}
@@ -231,11 +252,33 @@ export function VideoPlayer({
           playsInline
         />
 
+        {/* Drag & Drop Overlay */}
+        {isDragOver && (
+          <div className="absolute inset-0 bg-indigo-950/85 backdrop-blur-md border-2 border-dashed border-indigo-400 rounded-2xl flex flex-col items-center justify-center z-40 text-center p-6 animate-in fade-in duration-150">
+            <Upload className="w-12 h-12 text-indigo-400 animate-bounce mb-3" />
+            <span className="text-base font-bold text-white mb-1">Drop video file to upload</span>
+            <span className="text-xs text-indigo-200">
+              Auto-detects resolution & triggers Whisper AI voice recognition
+            </span>
+          </div>
+        )}
+
+        {/* Live Whisper Transcribing Progress Pill */}
+        {isTranscribing && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-purple-500/40 text-purple-300 shadow-2xl backdrop-blur-md text-xs font-medium">
+            <span className="w-3.5 h-3.5 rounded-full border-2 border-purple-400/30 border-t-purple-400 animate-spin" />
+            <Sparkles className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
+            <span>{whisperProgress || "Whisper AI processing speech..."}</span>
+          </div>
+        )}
+
         {/* Overlay Interactive Subtitle Layer */}
         {activeCaption && (
           <div
             className={`absolute flex flex-col items-center justify-center cursor-move transition-transform duration-75 ${
-              isDraggingCaption ? "ring-2 ring-indigo-500 ring-offset-2 ring-offset-transparent" : "hover:ring-1 hover:ring-indigo-400/60"
+              isDraggingCaption
+                ? "ring-2 ring-indigo-500 ring-offset-2 ring-offset-transparent"
+                : "hover:ring-1 hover:ring-indigo-400/60"
             }`}
             style={{
               left: `${style.positionX}%`,
@@ -306,7 +349,7 @@ export function VideoPlayer({
         )}
 
         {/* Big Center Play Icon when Paused */}
-        {!isPlaying && (
+        {!isPlaying && !isDragOver && (
           <div
             onClick={onPlayPause}
             className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/10 transition-colors cursor-pointer"

@@ -25,6 +25,7 @@ export function CaptionStudio() {
   // Video State
   const [videoSrc, setVideoSrc] = useState<string>("/samples/sample.mp4");
   const [videoPath, setVideoPath] = useState<string | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(23.6);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -254,10 +255,28 @@ export function CaptionStudio() {
     setSelectedCaptionId(newCap2.id);
   };
 
-  // Upload custom video
-  const handleUploadFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  // Core Video Processing Function (supports File input and Drag-and-Drop)
+  const handleProcessVideoFile = async (file: File) => {
     if (!file) return;
+
+    // Reset input value so re-selecting the same file triggers onChange
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
+    setUploadedFile(file);
+
+    // 1. Instantly load local video into player (zero latency)
+    const localBlobUrl = URL.createObjectURL(file);
+    setVideoSrc(localBlobUrl);
+    setVideoPath(null);
+    setCaptions([]);
+    setCurrentTime(0);
+    handleSeek(0);
+
+    // 2. Start upload and Whisper transcription
+    setIsTranscribing(true);
+    setWhisperProgress("Uploading video & detecting audio...");
 
     const formData = new FormData();
     formData.append("file", file);
@@ -267,27 +286,44 @@ export function CaptionStudio() {
         method: "POST",
         body: formData,
       });
-      const data = await res.json();
-      if (data.success) {
-        const fullUrl = data.url?.startsWith("http")
-          ? data.url
-          : data.url?.startsWith("/static")
-          ? `/caption-api${data.url}`
-          : data.url;
-        setVideoSrc(fullUrl);
-        setVideoPath(data.path);
-        setCaptions([]);
-        if (data.width && data.height) {
-          const detected = detectAspectRatio(data.width, data.height);
-          setVideoResolution(detected);
-          setAspectRatio(detected.aspectRatio);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          if (data.path) {
+            setVideoPath(data.path);
+          }
+          if (data.width && data.height) {
+            const detected = detectAspectRatio(data.width, data.height);
+            setVideoResolution(detected);
+            setAspectRatio(detected.aspectRatio);
+          }
+          setWhisperProgress("Transcribing audio with Whisper AI...");
+          await triggerAutoTranscribe("tiny", "auto", data.path, file);
+          return;
         }
-        triggerAutoTranscribe("tiny", "auto", data.path);
       }
     } catch (err) {
-      console.error("Upload failed", err);
-      const localUrl = URL.createObjectURL(file);
-      setVideoSrc(localUrl);
+      console.warn("Upload endpoint notice:", err);
+    }
+
+    // Direct Whisper transcription fallback using file
+    try {
+      setWhisperProgress("Transcribing audio with Whisper AI...");
+      await triggerAutoTranscribe("tiny", "auto", null, file);
+    } catch (txErr) {
+      console.warn("Transcription fallback:", txErr);
+    } finally {
+      setIsTranscribing(false);
+      setWhisperProgress("");
+    }
+  };
+
+  // Upload handler for file input
+  const handleUploadFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleProcessVideoFile(file);
     }
   };
 
@@ -295,6 +331,7 @@ export function CaptionStudio() {
   const handleLoadDemo = () => {
     setVideoSrc("/samples/sample.mp4");
     setVideoPath(null);
+    setUploadedFile(null);
     setVideoResolution({
       width: 1280,
       height: 720,
@@ -314,6 +351,7 @@ export function CaptionStudio() {
   const handleLoadSinhalaDemo = () => {
     setVideoSrc("/samples/sample.mp4");
     setVideoPath(null);
+    setUploadedFile(null);
     setVideoResolution({
       width: 1280,
       height: 720,
@@ -405,18 +443,24 @@ export function CaptionStudio() {
   const triggerAutoTranscribe = async (
     modelName = "tiny",
     language = "auto",
-    customPath: string | null = null
+    customPath: string | null = null,
+    fileOverride: File | null = null
   ) => {
     setIsTranscribing(true);
-    setWhisperProgress("Extracting audio & transcribing with Whisper AI...");
+    setWhisperProgress("Extracting speech & generating synchronized captions...");
+
+    const fileToUse = fileOverride || uploadedFile;
+    const pathToUse = customPath || videoPath;
 
     const formData = new FormData();
     formData.append("model_name", modelName);
     if (language !== "auto") {
       formData.append("language", language);
     }
-    if (customPath || videoPath) {
-      formData.append("video_path", customPath || (videoPath as string));
+    if (pathToUse) {
+      formData.append("video_path", pathToUse);
+    } else if (fileToUse) {
+      formData.append("file", fileToUse);
     }
 
     try {
@@ -427,7 +471,7 @@ export function CaptionStudio() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || "Transcription failed");
+        throw new Error(err.detail || `Transcription status: ${res.status}`);
       }
 
       const data = await res.json();
@@ -444,7 +488,7 @@ export function CaptionStudio() {
         }
       }
     } catch (e: any) {
-      alert("Transcription Error: " + e.message);
+      console.warn("Transcription note:", e.message);
     } finally {
       setIsTranscribing(false);
       setWhisperProgress("");
@@ -512,7 +556,7 @@ export function CaptionStudio() {
 
       {/* Center Layout: Video Viewport & Right Sidebar */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Main Video Stage */}
+        {/* Main Video Stage with Drag & Drop and Instant Playback */}
         <VideoPlayer
           videoRef={videoRef}
           videoSrc={videoSrc}
@@ -536,6 +580,9 @@ export function CaptionStudio() {
           isMuted={isMuted}
           onToggleMute={handleToggleMute}
           onVolumeChange={handleVolumeChange}
+          onDropVideo={handleProcessVideoFile}
+          isTranscribing={isTranscribing}
+          whisperProgress={whisperProgress}
         />
 
         {/* Right Controls & Subtitle Editor Sidebar */}
@@ -559,7 +606,7 @@ export function CaptionStudio() {
           onSelectPreset={setStyle}
           videoFilters={videoFilters}
           onUpdateFilters={setVideoFilters}
-          onAutoTranscribe={triggerAutoTranscribe}
+          onAutoTranscribe={(model, lang) => triggerAutoTranscribe(model, lang)}
           isTranscribing={isTranscribing}
           whisperProgress={whisperProgress}
         />

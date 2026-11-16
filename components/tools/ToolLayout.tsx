@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Star } from "lucide-react";
+import { Star, Lock, Zap, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type ToolConfig } from "@/lib/tools/registry";
 import { isFavorite, toggleFavorite } from "@/lib/tools/favorites";
+import { useUsage } from "@/components/auth/UsageContext";
+import { Button } from "@/components/ui/Button";
 
 interface ToolLayoutProps {
   tool: ToolConfig;
@@ -17,9 +19,45 @@ interface ToolLayoutProps {
  * Provides consistent header, spacing, and max-width.
  */
 export function ToolLayout({ tool, children, className }: ToolLayoutProps) {
+  const { hasUsedFreeTier, isPro, isSuperAdmin, triggerUpgradeModal } = useUsage();
+  const isSubtitleTool = tool.slug === "video-caption-generator" || tool.slug === "caption-studio";
+
   return (
     <div className={cn("flex flex-col gap-6 max-w-6xl mx-auto w-full", className)}>
       <ToolHeader tool={tool} />
+
+      {/* Free tier exhausted banner - ONLY for subtitle / video caption tool */}
+      {isSubtitleTool && hasUsedFreeTier && !isPro && !isSuperAdmin && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-rose-500/10 to-brand-500/10 border border-amber-500/30 animate-fade-in shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <Lock className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-foreground">
+                1/1 Free Subtitle Credit Consumed
+              </p>
+              <p className="text-xs text-muted">
+                You have reached your free subtitle generation limit. Upgrade to Pro for unlimited subtitle generation, high-speed rendering, and premium exports.
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="primary"
+            size="sm"
+            className="flex items-center gap-1.5 shrink-0"
+            onClick={() =>
+              triggerUpgradeModal(
+                `You have consumed your 1 free subtitle generation credit. Upgrade to Pro for unlimited subtitle generation.`
+              )
+            }
+          >
+            <Zap className="h-3.5 w-3.5" />
+            Upgrade to Pro
+          </Button>
+        </div>
+      )}
+
       {children}
     </div>
   );

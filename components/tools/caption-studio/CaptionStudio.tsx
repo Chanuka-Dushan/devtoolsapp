@@ -20,6 +20,7 @@ import { getPendingVideo } from "@/lib/utils/pendingVideo";
 import { CaptionSegment, StylePreset, VideoFilters, VideoResolution } from "./types";
 import { Film, Type, Palette, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUsage } from "@/components/auth/UsageContext";
 
 interface CaptionStudioProps {
   initialVideoFile?: File | null;
@@ -34,6 +35,7 @@ export function CaptionStudio({
   onBackToLanding,
   isFullTab = false,
 }: CaptionStudioProps) {
+  const { checkAndConsume, triggerUpgradeModal, hasUsedFreeTier, isPro, isSuperAdmin } = useUsage();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -476,13 +478,21 @@ export function CaptionStudio({
     }
   };
 
-  // Auto transcribe with Whisper
+  // Auto transcribe with Whisper (Paid tool: 1 free tier credit, then upgrade required)
   const triggerAutoTranscribe = async (
     modelName = "tiny",
     language = "auto",
     customPath: string | null = null,
     fileOverride: File | null = null
   ) => {
+    // High security check: verify user session and free tier credit in PostgreSQL
+    const authCheck = await checkAndConsume("video-caption-generator", "AI Video Caption / Subtitle Generator");
+    if (!authCheck.allowed) {
+      setIsTranscribing(false);
+      setWhisperProgress("");
+      return;
+    }
+
     setIsTranscribing(true);
     setWhisperProgress("Extracting speech & generating synchronized captions...");
 

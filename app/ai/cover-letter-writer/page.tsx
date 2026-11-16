@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   FileText,
   Sparkles,
@@ -22,6 +23,7 @@ import { Card } from "@/components/ui/Card";
 import { ExportFilenameModal } from "@/components/tools/ExportFilenameModal";
 import { Document, Packer, Paragraph, TextRun } from "docx";
 import { jsPDF } from "jspdf";
+import { useUsage } from "@/components/auth/UsageContext";
 
 const SAMPLE_JOB_DESCRIPTION = `Senior Full-Stack Engineer - NextGen Cloud Platform
 
@@ -55,6 +57,9 @@ export default function CoverLetterWriterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  const router = useRouter();
+  const { triggerUpgradeModal } = useUsage();
 
   // Export modal state
   const [exportModalOpen, setExportModalOpen] = useState(false);
@@ -95,6 +100,15 @@ export default function CoverLetterWriterPage() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
+        if (response.status === 401 || data.code === "AUTH_REQUIRED") {
+          router.push(`/auth/signin?callbackUrl=${encodeURIComponent(window.location.pathname)}`);
+          return;
+        }
+        if (response.status === 403 || data.code === "UPGRADE_REQUIRED") {
+          triggerUpgradeModal(data.error);
+          setError(data.error);
+          return;
+        }
         throw new Error(data.error || "Failed to generate cover letter.");
       }
 

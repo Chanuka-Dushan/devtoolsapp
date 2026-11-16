@@ -12,8 +12,12 @@ import {
   Film,
   Globe,
   ArrowLeft,
+  Zap,
+  Lock,
+  Crown,
 } from "lucide-react";
 import { VideoResolution } from "./types";
+import { useUsage } from "@/components/auth/UsageContext";
 
 interface HeaderProps {
   aspectRatio: string;
@@ -44,6 +48,8 @@ export function Header({
   backendOnline,
   onBackToLanding,
 }: HeaderProps) {
+  const { isPro, isSuperAdmin, hasUsedFreeTier, triggerUpgradeModal } = useUsage();
+
   return (
     <header className="min-h-14 border-b border-slate-800 bg-slate-900/95 backdrop-blur-md px-3 sm:px-4 py-2 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 z-20 shrink-0 select-none">
       {/* Left: Back button + Brand */}
@@ -135,6 +141,31 @@ export function Header({
 
       {/* Right Actions */}
       <div className="flex items-center space-x-1 sm:space-x-1.5">
+        {/* Subtitle Free Tier / Pro Indicator */}
+        {isPro || isSuperAdmin ? (
+          <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+            <Crown className="w-3 h-3 text-amber-400" />
+            Pro Unlimited
+          </span>
+        ) : hasUsedFreeTier ? (
+          <button
+            onClick={() =>
+              triggerUpgradeModal(
+                "You have used your 1 free subtitle generation credit. Upgrade to Pro for unlimited subtitle generation."
+              )
+            }
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold text-rose-300 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 rounded-lg transition-colors cursor-pointer"
+          >
+            <Lock className="w-3 h-3 text-rose-400" />
+            <span>1/1 Used • Upgrade</span>
+          </button>
+        ) : (
+          <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+            <Zap className="w-3 h-3 text-emerald-400" />
+            1 Free Subtitle Credit
+          </span>
+        )}
+
         <button
           onClick={onLoadDemo}
           className="hidden md:inline-flex px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700/80 rounded-lg transition-colors border border-slate-700/60 cursor-pointer"

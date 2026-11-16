@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { inspectHtml } from "@/lib/seo/inspector";
+import { authorizeAndTrackUsage } from "@/lib/auth/usageGuard";
 
 export async function POST(request: NextRequest) {
   let body: any;

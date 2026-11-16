@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCompletion, isAIConfigured } from "@/lib/ai/provider";
+import { authorizeAndTrackUsage } from "@/lib/auth/usageGuard";
 
 const requestSchema = z.object({
   code: z.string().min(1, "Code is required").max(10000, "Code too long"),

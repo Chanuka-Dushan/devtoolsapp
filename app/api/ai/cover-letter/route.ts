@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCompletion, isAIConfigured } from "@/lib/ai/provider";
+import { authorizeAndTrackUsage } from "@/lib/auth/usageGuard";
 
 const requestSchema = z.object({
   jobDescription: z.string().min(10, "Job description must be at least 10 characters.").max(15000, "Job description too long."),

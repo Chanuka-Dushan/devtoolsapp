@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCompletion, isAIConfigured } from "@/lib/ai/provider";
+import { authorizeAndTrackUsage } from "@/lib/auth/usageGuard";
 
 const SQL_DIALECTS = ["PostgreSQL", "MySQL", "SQLite", "SQL Server", "Oracle", "Generic SQL"] as const;
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Bug, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Input";
@@ -9,6 +10,7 @@ import { ToolLayout, ToolPanel, ToolActions } from "@/components/tools/ToolLayou
 import { getToolBySlug } from "@/lib/tools/registry";
 import { CopyButton } from "@/components/tools/CopyButton";
 import { recordToolUsage } from "@/lib/analytics/tracker";
+import { useUsage } from "@/components/auth/UsageContext";
 
 const tool = getToolBySlug("debugger")!;
 
@@ -18,6 +20,8 @@ const LANGUAGES = [
 ];
 
 export default function AIDebuggerTool() {
+  const router = useRouter();
+  const { triggerUpgradeModal } = useUsage();
   const [code, setCode] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [context, setContext] = useState("");
@@ -45,7 +49,19 @@ export default function AIDebuggerTool() {
       });
 
       const data = await response.json();
-      if (!response.ok) { setError(data.error ?? "AI service error."); return; }
+      if (!response.ok) {
+        if (response.status === 401 || data.code === "AUTH_REQUIRED") {
+          router.push(`/auth/signin?callbackUrl=${encodeURIComponent(window.location.pathname)}`);
+          return;
+        }
+        if (response.status === 403 || data.code === "UPGRADE_REQUIRED") {
+          triggerUpgradeModal(data.error);
+          setError(data.error);
+          return;
+        }
+        setError(data.error ?? "AI service error.");
+        return;
+      }
       setAnalysis(data.analysis ?? "");
       recordToolUsage("debugger", "AI Debugger", `Analyzed ${language} bug`);
     } catch {
@@ -53,7 +69,7 @@ export default function AIDebuggerTool() {
     } finally {
       setIsLoading(false);
     }
-  }, [code, errorMsg, context, language]);
+  }, [code, errorMsg, context, language, router, triggerUpgradeModal]);
 
   const handleClear = useCallback(() => {
     setCode(""); setErrorMsg(""); setContext(""); setAnalysis(""); setError(null);

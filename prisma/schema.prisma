@@ -13,14 +13,21 @@ datasource db {
 
 // ─── User ────────────────────────────────────────────────────────────────────
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String?
-  image         String?
-  emailVerified DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  role          UserRole  @default(USER)
+  id                 String       @id @default(cuid())
+  email              String       @unique
+  name               String?
+  image              String?
+  emailVerified      DateTime?
+  role               UserRole     @default(USER)
+  subscriptionStatus String       @default("FREE")
+  usageCount         Int          @default(0)
+  freeTierLimit      Int          @default(1)
+  isPro              Boolean      @default(false)
+  paymentNotes       String?
+  lastLoginAt        DateTime?
+  lastIpAddress      String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 
   // Relations
   accounts   Account[]
@@ -36,6 +43,7 @@ enum UserRole {
   USER
   PRO
   ADMIN
+  SUPER_ADMIN
 }
 
 // ─── Auth.js Tables ──────────────────────────────────────────────────────────
@@ -95,6 +103,19 @@ model ToolUsage {
   @@index([userId])
   @@index([createdAt])
   @@map("tool_usages")
+}
+
+// ─── High Security Device / IP Usage Tracking ────────────────────────────────
+model DeviceUsage {
+  id         String   @id @default(cuid())
+  ipAddress  String   @unique
+  userAgent  String?
+  usageCount Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([ipAddress])
+  @@map("device_usages")
 }
 
 // ─── Categories & Tags ───────────────────────────────────────────────────────

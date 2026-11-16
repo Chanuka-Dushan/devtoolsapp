@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Input";
@@ -9,6 +10,7 @@ import { ToolLayout, ToolPanel, ToolActions } from "@/components/tools/ToolLayou
 import { getToolBySlug } from "@/lib/tools/registry";
 import { CopyButton } from "@/components/tools/CopyButton";
 import { recordToolUsage } from "@/lib/analytics/tracker";
+import { useUsage } from "@/components/auth/UsageContext";
 
 const tool = getToolBySlug("code-explainer")!;
 
@@ -25,6 +27,8 @@ const STYLES = [
 
 export default function CodeExplainerTool() {
   const [code, setCode] = useState("");
+  const router = useRouter();
+  const { triggerUpgradeModal } = useUsage();
   const [language, setLanguage] = useState("Auto-detect");
   const [style, setStyle] = useState("detailed");
   const [explanation, setExplanation] = useState("");
@@ -51,6 +55,15 @@ export default function CodeExplainerTool() {
       const data = await response.json();
 
       if (!response.ok) {
+        if (response.status === 401 || data.code === "AUTH_REQUIRED") {
+          router.push(`/auth/signin?callbackUrl=${encodeURIComponent(window.location.pathname)}`);
+          return;
+        }
+        if (response.status === 403 || data.code === "UPGRADE_REQUIRED") {
+          triggerUpgradeModal(data.error);
+          setError(data.error);
+          return;
+        }
         setError(data.error ?? "AI service error. Please try again.");
         return;
       }
@@ -62,7 +75,7 @@ export default function CodeExplainerTool() {
     } finally {
       setIsLoading(false);
     }
-  }, [code, language, style]);
+  }, [code, language, style, router, triggerUpgradeModal]);
 
   const handleClear = useCallback(() => {
     setCode("");

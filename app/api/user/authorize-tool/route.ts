@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authorizeAndTrackUsage } from "@/lib/auth/usageGuard";
+import { checkToolAccess, consumeToolCredit } from "@/lib/auth/usageGuard";
 
 export async function POST(request: NextRequest) {
   try {
-    let body: { toolSlug?: string; metadata?: Record<string, unknown> } = {};
+    let body: { toolSlug?: string; action?: "check" | "consume"; metadata?: Record<string, unknown> } = {};
     try {
       body = await request.json();
-    } catch {
-      // body empty or non-json
-    }
+    } catch {}
 
-    const { toolSlug = "general", metadata = {} } = body;
-    const result = await authorizeAndTrackUsage(request, toolSlug, metadata);
+    const { toolSlug = "video-caption-generator", action = "check", metadata = {} } = body;
+
+    let result;
+    if (action === "consume") {
+      result = await consumeToolCredit(request, toolSlug, metadata);
+    } else {
+      result = await checkToolAccess(request, toolSlug);
+    }
 
     return NextResponse.json(result, { status: result.status });
   } catch (error) {

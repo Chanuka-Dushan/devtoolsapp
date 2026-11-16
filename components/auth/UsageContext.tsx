@@ -1,8 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { UpgradeModal } from "./UpgradeModal";
+import { SignInModal } from "./SignInModal";
 
 interface UsageContextValue {
   isAuthenticated: boolean;
@@ -15,13 +15,14 @@ interface UsageContextValue {
   userEmail?: string;
   refreshUsage: () => Promise<void>;
   triggerUpgradeModal: (message?: string) => void;
-  checkAndConsume: (toolSlug: string, toolName?: string) => Promise<{ allowed: boolean; reason?: string }>;
+  triggerSignInModal: (message?: string) => void;
+  checkAccess: (toolSlug?: string, toolName?: string) => Promise<{ allowed: boolean; reason?: string }>;
+  consumeCredit: (toolSlug?: string, metadata?: Record<string, unknown>) => Promise<{ ok: boolean }>;
 }
 
 const UsageContext = createContext<UsageContextValue | null>(null);
 
 export function UsageProvider({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isPro, setIsPro] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -31,8 +32,11 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
   const [hasUsedFreeTier, setHasUsedFreeTier] = useState(false);
   const [userEmail, setUserEmail] = useState<string | undefined>(undefined);
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalMessage, setModalMessage] = useState<string | undefined>(undefined);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [upgradeMessage, setUpgradeMessage] = useState<string | undefined>(undefined);
+
+  const [signInModalOpen, setSignInModalOpen] = useState(false);
+  const [signInMessage, setSignInMessage] = useState<string | undefined>(undefined);
 
   const refreshUsage = useCallback(async () => {
     try {
@@ -51,7 +55,7 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } catch (err) {
-      console.error("Error refreshing usage in UsageProvider:", err);
+      console.error("Error refreshing usage:", err);
     }
   }, []);
 
@@ -60,27 +64,29 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
   }, [refreshUsage]);
 
   const triggerUpgradeModal = useCallback((msg?: string) => {
-    if (msg) setModalMessage(msg);
-    setModalOpen(true);
+    if (msg) setUpgradeMessage(msg);
+    setUpgradeModalOpen(true);
   }, []);
 
-  const checkAndConsume = useCallback(
-    async (toolSlug: string, toolName?: string): Promise<{ allowed: boolean; reason?: string }> => {
+  const triggerSignInModal = useCallback((msg?: string) => {
+    if (msg) setSignInMessage(msg);
+    setSignInModalOpen(true);
+  }, []);
+
+  // Pre-check tool access without consuming the credit
+  const checkAccess = useCallback(
+    async (toolSlug: string = "video-caption-generator", toolName?: string): Promise<{ allowed: boolean; reason?: string }> => {
       try {
         const res = await fetch("/api/user/authorize-tool", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ toolSlug, metadata: { toolName } }),
+          body: JSON.stringify({ toolSlug, action: "check", metadata: { toolName } }),
         });
 
         const data = await res.json();
 
         if (res.status === 401 || data.error === "AUTH_REQUIRED") {
-          // Redirect to signin with callback url
-          if (typeof window !== "undefined") {
-            const currentUrl = window.location.pathname;
-            router.push(`/auth/signin?callbackUrl=${encodeURIComponent(currentUrl)}`);
-          }
+          triggerSignInModal(data.message);
           return { allowed: false, reason: "AUTH_REQUIRED" };
         }
 
@@ -91,17 +97,36 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (res.ok && data.ok) {
-          await refreshUsage();
           return { allowed: true };
         }
 
-        return { allowed: false, reason: data.message || "Unknown authorization failure" };
+        return { allowed: false, reason: data.message || "Authorization check failed" };
       } catch (err) {
-        console.error("Error calling /api/user/authorize-tool:", err);
+        console.error("Error in checkAccess:", err);
         return { allowed: false, reason: "Network error" };
       }
     },
-    [router, refreshUsage, triggerUpgradeModal]
+    [triggerSignInModal, triggerUpgradeModal, refreshUsage]
+  );
+
+  // Consume credit ONLY upon successful subtitle generation
+  const consumeCredit = useCallback(
+    async (toolSlug: string = "video-caption-generator", metadata: Record<string, unknown> = {}): Promise<{ ok: boolean }> => {
+      try {
+        const res = await fetch("/api/user/authorize-tool", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ toolSlug, action: "consume", metadata }),
+        });
+
+        await refreshUsage();
+        return { ok: res.ok };
+      } catch (err) {
+        console.error("Error consuming credit:", err);
+        return { ok: false };
+      }
+    },
+    [refreshUsage]
   );
 
   return (
@@ -117,15 +142,22 @@ export function UsageProvider({ children }: { children: React.ReactNode }) {
         userEmail,
         refreshUsage,
         triggerUpgradeModal,
-        checkAndConsume,
+        triggerSignInModal,
+        checkAccess,
+        consumeCredit,
       }}
     >
       {children}
       <UpgradeModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        message={modalMessage}
+        open={upgradeModalOpen}
+        onClose={() => setUpgradeModalOpen(false)}
+        message={upgradeMessage}
         userEmail={userEmail}
+      />
+      <SignInModal
+        open={signInModalOpen}
+        onClose={() => setSignInModalOpen(false)}
+        message={signInMessage}
       />
     </UsageContext.Provider>
   );

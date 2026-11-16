@@ -36,24 +36,15 @@ export function isPaidTool(slug: string): boolean {
 }
 
 /**
- * Server-side guard to verify authentication and enforce the 1-free-tier usage limit.
- * ONLY the subtitle/caption generator is gated. All other tools are free!
- *
- * Security Model:
- * 1. For subtitle/caption generator, user must be authenticated with Google / account.
- * 2. High security: Usage is stored in PostgreSQL database linked to user account.
- *    Clearing cookies/cache/localStorage will NOT reset free tier credits.
- * 3. Pro users and Super Admins have unlimited access.
- * 4. Free users get exactly 1 free subtitle generation credit.
- * 5. Device IP is tracked to prevent multi-account abuse.
+ * Check if the user is authenticated and permitted to use the tool.
+ * Does NOT consume the credit yet (credit is consumed only upon success).
  */
-export async function authorizeAndTrackUsage(
+export async function checkToolAccess(
   req?: NextRequest,
-  toolSlug: string = "video-caption-generator",
-  metadata: Record<string, unknown> = {}
+  toolSlug: string = "video-caption-generator"
 ): Promise<UsageAuthResult> {
   try {
-    // If it's NOT a paid tool (all other tools on the platform stay free), allow immediately!
+    // If it's NOT a paid tool, always allow
     if (!isPaidTool(toolSlug)) {
       return {
         ok: true,
@@ -84,8 +75,7 @@ export async function authorizeAndTrackUsage(
       };
     }
 
-    // Always fetch latest authoritative data from PostgreSQL
-    let user = await prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { email },
     });
 
@@ -98,30 +88,10 @@ export async function authorizeAndTrackUsage(
       };
     }
 
-    // Client IP for anti-abuse tracking
-    let clientIp = "127.0.0.1";
-    if (req) {
-      const forwarded = req.headers.get("x-forwarded-for");
-      clientIp = forwarded ? forwarded.split(",")[0].trim() : req.headers.get("x-real-ip") || "127.0.0.1";
-    }
-
     const isSuperAdmin = user.role === "SUPER_ADMIN" || user.role === "ADMIN";
     const isPro = user.isPro || user.role === "PRO" || user.subscriptionStatus === "PRO" || isSuperAdmin;
 
-    // Pro and Super Admin have unlimited subtitle generation
     if (isPro) {
-      try {
-        await prisma.toolUsage.create({
-          data: {
-            toolSlug,
-            userId: user.id,
-            metadata: { ...metadata, role: user.role, isPro: true, ip: clientIp },
-          },
-        });
-      } catch (err) {
-        console.error("Failed to record pro tool usage:", err);
-      }
-
       return {
         ok: true,
         status: 200,
@@ -140,7 +110,6 @@ export async function authorizeAndTrackUsage(
       };
     }
 
-    // Free Tier Check: allow only 1 free tier subtitle generation
     const limit = user.freeTierLimit || 1;
     if (user.usageCount >= limit) {
       return {
@@ -162,7 +131,88 @@ export async function authorizeAndTrackUsage(
       };
     }
 
-    // Consume the 1 free tier credit atomically in PostgreSQL
+    return {
+      ok: true,
+      status: 200,
+      message: "Authorized (1 free credit available)",
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        subscriptionStatus: user.subscriptionStatus,
+        usageCount: user.usageCount,
+        freeTierLimit: limit,
+        isPro: false,
+      },
+      remaining: Math.max(0, limit - user.usageCount),
+    };
+  } catch (err) {
+    console.error("Error in checkToolAccess:", err);
+    return {
+      ok: false,
+      status: 500,
+      error: "INTERNAL_ERROR",
+      message: "Security check error.",
+    };
+  }
+}
+
+/**
+ * Consumes 1 credit in PostgreSQL upon SUCCESSFUL subtitle generation.
+ * This guarantees the user's free credit is never lost on failed API calls.
+ */
+export async function consumeToolCredit(
+  req?: NextRequest,
+  toolSlug: string = "video-caption-generator",
+  metadata: Record<string, unknown> = {}
+): Promise<UsageAuthResult> {
+  try {
+    if (!isPaidTool(toolSlug)) {
+      return { ok: true, status: 200, message: "Free tool" };
+    }
+
+    const session = await auth();
+    if (!session?.user?.email) {
+      return { ok: false, status: 401, error: "AUTH_REQUIRED", message: "Not signed in" };
+    }
+
+    const email = session.user.email.toLowerCase();
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return { ok: false, status: 401, error: "AUTH_REQUIRED", message: "User not found" };
+    }
+
+    let clientIp = "127.0.0.1";
+    if (req) {
+      const forwarded = req.headers.get("x-forwarded-for");
+      clientIp = forwarded ? forwarded.split(",")[0].trim() : req.headers.get("x-real-ip") || "127.0.0.1";
+    }
+
+    const isSuperAdmin = user.role === "SUPER_ADMIN" || user.role === "ADMIN";
+    const isPro = user.isPro || user.role === "PRO" || user.subscriptionStatus === "PRO" || isSuperAdmin;
+
+    if (isPro) {
+      // Just record tool usage for analytics
+      try {
+        await prisma.toolUsage.create({
+          data: {
+            toolSlug,
+            userId: user.id,
+            metadata: { ...metadata, role: user.role, isPro: true, ip: clientIp },
+          },
+        });
+      } catch (e) {}
+
+      return {
+        ok: true,
+        status: 200,
+        message: "Pro usage recorded",
+        remaining: 999999,
+      };
+    }
+
+    // Free user: Increment usageCount atomically in PostgreSQL
     const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -172,7 +222,6 @@ export async function authorizeAndTrackUsage(
       },
     });
 
-    // Record tool usage
     try {
       await prisma.toolUsage.create({
         data: {
@@ -182,25 +231,19 @@ export async function authorizeAndTrackUsage(
         },
       });
 
-      // Update Device IP usage
       await prisma.deviceUsage.upsert({
         where: { ipAddress: clientIp },
-        create: {
-          ipAddress: clientIp,
-          usageCount: 1,
-        },
-        update: {
-          usageCount: { increment: 1 },
-        },
+        create: { ipAddress: clientIp, usageCount: 1 },
+        update: { usageCount: { increment: 1 } },
       });
     } catch (dbErr) {
-      console.error("Error logging free tier usage audit:", dbErr);
+      console.error("Error logging usage audit:", dbErr);
     }
 
     return {
       ok: true,
       status: 200,
-      message: "Authorized (1 free subtitle generation credit consumed)",
+      message: "1 free credit successfully consumed",
       user: {
         id: updatedUser.id,
         email: updatedUser.email,
@@ -208,18 +251,31 @@ export async function authorizeAndTrackUsage(
         role: updatedUser.role,
         subscriptionStatus: updatedUser.subscriptionStatus,
         usageCount: updatedUser.usageCount,
-        freeTierLimit: limit,
+        freeTierLimit: updatedUser.freeTierLimit,
         isPro: false,
       },
-      remaining: Math.max(0, limit - updatedUser.usageCount),
+      remaining: Math.max(0, updatedUser.freeTierLimit - updatedUser.usageCount),
     };
   } catch (error) {
-    console.error("Error in authorizeAndTrackUsage:", error);
+    console.error("Error in consumeToolCredit:", error);
     return {
       ok: false,
       status: 500,
       error: "INTERNAL_ERROR",
-      message: "An unexpected error occurred during security authorization.",
+      message: "Failed to record credit consumption",
     };
   }
+}
+
+/**
+ * Backward compatibility wrapper.
+ */
+export async function authorizeAndTrackUsage(
+  req?: NextRequest,
+  toolSlug: string = "video-caption-generator",
+  metadata: Record<string, unknown> = {}
+): Promise<UsageAuthResult> {
+  const check = await checkToolAccess(req, toolSlug);
+  if (!check.ok) return check;
+  return await consumeToolCredit(req, toolSlug, metadata);
 }

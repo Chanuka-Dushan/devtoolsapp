@@ -35,7 +35,7 @@ export function CaptionStudio({
   onBackToLanding,
   isFullTab = false,
 }: CaptionStudioProps) {
-  const { checkAndConsume, triggerUpgradeModal, hasUsedFreeTier, isPro, isSuperAdmin } = useUsage();
+  const { checkAccess, consumeCredit, triggerUpgradeModal, triggerSignInModal, hasUsedFreeTier, isPro, isSuperAdmin } = useUsage();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -485,9 +485,9 @@ export function CaptionStudio({
     customPath: string | null = null,
     fileOverride: File | null = null
   ) => {
-    // High security check: verify user session and free tier credit in PostgreSQL
-    const authCheck = await checkAndConsume("video-caption-generator", "AI Video Caption / Subtitle Generator");
-    if (!authCheck.allowed) {
+    // 1. Verify user session & remaining free tier credit (does NOT consume yet)
+    const access = await checkAccess("video-caption-generator", "AI Video Caption / Subtitle Generator");
+    if (!access.allowed) {
       setIsTranscribing(false);
       setWhisperProgress("");
       return;
@@ -533,9 +533,20 @@ export function CaptionStudio({
           setDuration(data.duration);
           setTrimEnd(data.duration);
         }
+
+        // 2. Consume credit ONLY upon verified successful caption generation
+        await consumeCredit("video-caption-generator", {
+          segmentCount: data.segments.length,
+          duration: data.duration,
+          language,
+        });
       }
     } catch (e: any) {
       console.warn("Transcription note:", e.message);
+      // Fallback for demo sample if backend had a temporary connection hiccup
+      if (videoSrc === "/samples/sample.mp4" || !fileToUse) {
+        setCaptions(INITIAL_CAPTIONS);
+      }
     } finally {
       setIsTranscribing(false);
       setWhisperProgress("");

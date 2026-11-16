@@ -17,8 +17,22 @@ import {
 import { detectAspectRatio } from "./utils/resolution";
 import { captionFetch } from "./api";
 import { CaptionSegment, StylePreset, VideoFilters, VideoResolution } from "./types";
+import { Film, Type, Palette, Clock } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export function CaptionStudio() {
+interface CaptionStudioProps {
+  initialVideoFile?: File | null;
+  initialMode?: "default" | "sinhala";
+  onBackToLanding?: () => void;
+  isFullTab?: boolean;
+}
+
+export function CaptionStudio({
+  initialVideoFile,
+  initialMode,
+  onBackToLanding,
+  isFullTab = false,
+}: CaptionStudioProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -41,6 +55,9 @@ export function CaptionStudio() {
     category: "16:9 (Widescreen HD)",
     quality: "720p HD",
   });
+
+  // Mobile View Navigation: 'player' | 'captions' | 'styles' | 'timeline'
+  const [mobileTab, setMobileTab] = useState<"player" | "captions" | "styles" | "timeline">("player");
 
   // Video Filters
   const [videoFilters, setVideoFilters] = useState<VideoFilters>({
@@ -79,6 +96,15 @@ export function CaptionStudio() {
       })
       .catch(() => setBackendOnline(false));
   }, []);
+
+  // Handle Initial Props (e.g. from Landing Page upload or Sinhala preset)
+  useEffect(() => {
+    if (initialVideoFile) {
+      handleProcessVideoFile(initialVideoFile);
+    } else if (initialMode === "sinhala") {
+      handleLoadSinhalaDemo();
+    }
+  }, [initialVideoFile, initialMode]);
 
   // Sync video time
   useEffect(() => {
@@ -259,7 +285,6 @@ export function CaptionStudio() {
   const handleProcessVideoFile = async (file: File) => {
     if (!file) return;
 
-    // Reset input value so re-selecting the same file triggers onChange
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -273,6 +298,9 @@ export function CaptionStudio() {
     setCaptions([]);
     setCurrentTime(0);
     handleSeek(0);
+
+    // Switch mobile view to player so user immediately sees video
+    setMobileTab("player");
 
     // 2. Start upload and Whisper transcription
     setIsTranscribing(true);
@@ -345,6 +373,7 @@ export function CaptionStudio() {
     setTrimStart(0.0);
     setTrimEnd(23.6);
     handleSeek(0);
+    setMobileTab("player");
   };
 
   // Load Sinhala demo captions (සිංහල උපසිරැසි)
@@ -367,6 +396,7 @@ export function CaptionStudio() {
     setTrimStart(0.0);
     setTrimEnd(23.6);
     handleSeek(0);
+    setMobileTab("player");
   };
 
   // Convert captions to dynamic 1-line rapid voice sync frames
@@ -529,7 +559,14 @@ export function CaptionStudio() {
   const activeCaption = captions.find((c) => currentTime >= c.start && currentTime <= c.end);
 
   return (
-    <div className="flex flex-col h-[850px] w-full bg-slate-950 text-slate-100 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden font-sans select-none">
+    <div
+      className={cn(
+        "flex flex-col w-full bg-slate-950 text-slate-100 font-sans select-none",
+        isFullTab
+          ? "min-h-screen h-screen rounded-none border-none overflow-hidden"
+          : "min-h-[780px] md:h-[850px] rounded-2xl border border-slate-800 shadow-2xl overflow-hidden"
+      )}
+    >
       {/* Top Header */}
       <Header
         aspectRatio={aspectRatio}
@@ -543,6 +580,7 @@ export function CaptionStudio() {
         onOpenShortcuts={() => setIsShortcutsOpen(true)}
         isTranscribing={isTranscribing}
         backendOnline={backendOnline}
+        onBackToLanding={onBackToLanding}
       />
 
       {/* Hidden File Input for Video Upload */}
@@ -554,85 +592,182 @@ export function CaptionStudio() {
         className="hidden"
       />
 
-      {/* Center Layout: Video Viewport & Right Sidebar */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Main Video Stage with Drag & Drop and Instant Playback */}
-        <VideoPlayer
-          videoRef={videoRef}
-          videoSrc={videoSrc}
+      {/* ── Main Workspace ───────────────────────────────── */}
+      {/* Desktop: Side-by-Side 3 Pane Studio | Mobile: Tab-Switchable Views */}
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+        {/* Video Player Section (Always visible on Desktop, or when mobileTab === 'player') */}
+        <div
+          className={cn(
+            "flex-1 flex flex-col overflow-hidden",
+            mobileTab === "player" ? "flex" : "hidden md:flex"
+          )}
+        >
+          <VideoPlayer
+            videoRef={videoRef}
+            videoSrc={videoSrc}
+            currentTime={currentTime}
+            duration={duration}
+            isPlaying={isPlaying}
+            onPlayPause={togglePlayPause}
+            onSeek={handleSeek}
+            onStepFrame={handleStepFrame}
+            captions={captions}
+            activeCaption={activeCaption}
+            style={style}
+            onUpdateStyle={setStyle}
+            onEditCaptionText={handleUpdateCaptionText}
+            aspectRatio={aspectRatio}
+            videoResolution={videoResolution}
+            videoFilters={videoFilters}
+            playbackRate={playbackRate}
+            onSetPlaybackRate={handleSetPlaybackRate}
+            volume={volume}
+            isMuted={isMuted}
+            onToggleMute={handleToggleMute}
+            onVolumeChange={handleVolumeChange}
+            onDropVideo={handleProcessVideoFile}
+            isTranscribing={isTranscribing}
+            whisperProgress={whisperProgress}
+          />
+        </div>
+
+        {/* Sidebar Section (Captions, Styles, Filters) */}
+        <div
+          className={cn(
+            "w-full md:w-96 border-t md:border-t-0 md:border-l border-slate-800 bg-slate-900/95 flex flex-col h-full shrink-0",
+            mobileTab === "captions" || mobileTab === "styles" ? "flex" : "hidden md:flex"
+          )}
+        >
+          <Sidebar
+            captions={captions}
+            selectedCaptionId={selectedCaptionId}
+            onSelectCaption={setSelectedCaptionId}
+            onUpdateCaptionText={handleUpdateCaptionText}
+            onUpdateCaptionTime={handleUpdateCaptionTime}
+            onAddCaption={handleAddCaption}
+            onDeleteCaption={handleDeleteCaption}
+            onSplitCaption={handleSplitCaption}
+            onConvertToRapidOneLine={handleConvertToRapidOneLine}
+            onEnforceTwoLines={handleEnforceTwoLines}
+            onAutoSplitCaption={handleAutoSplitCaption}
+            onOpenTranslate={() => setIsTranslateOpen(true)}
+            onSeek={handleSeek}
+            currentTime={currentTime}
+            style={style}
+            onUpdateStyle={setStyle}
+            onSelectPreset={setStyle}
+            videoFilters={videoFilters}
+            onUpdateFilters={setVideoFilters}
+            onAutoTranscribe={(model, lang) => triggerAutoTranscribe(model, lang)}
+            isTranscribing={isTranscribing}
+            whisperProgress={whisperProgress}
+          />
+        </div>
+
+        {/* Timeline on Mobile when mobileTab === 'timeline' */}
+        <div
+          className={cn(
+            "w-full flex-1 flex flex-col bg-slate-950 p-2 md:hidden",
+            mobileTab === "timeline" ? "flex" : "hidden"
+          )}
+        >
+          <div className="text-xs text-slate-400 font-semibold mb-2 flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Interactive Timeline Editor</span>
+          </div>
+          <Timeline
+            currentTime={currentTime}
+            duration={duration}
+            onSeek={handleSeek}
+            captions={captions}
+            selectedCaptionId={selectedCaptionId}
+            onSelectCaption={setSelectedCaptionId}
+            onUpdateCaptionTime={handleUpdateCaptionTime}
+            onSplitCaption={handleSplitCaption}
+            onDeleteCaption={handleDeleteCaption}
+            onAddCaptionAtPlayhead={() =>
+              handleAddCaption(currentTime, Math.min(duration, currentTime + 2.5), "New Caption")
+            }
+            trimStart={trimStart}
+            trimEnd={trimEnd}
+            onUpdateTrim={(start, end) => {
+              setTrimStart(start);
+              setTrimEnd(end);
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Bottom Timeline on Desktop */}
+      <div className="hidden md:block">
+        <Timeline
           currentTime={currentTime}
           duration={duration}
-          isPlaying={isPlaying}
-          onPlayPause={togglePlayPause}
           onSeek={handleSeek}
-          onStepFrame={handleStepFrame}
-          captions={captions}
-          activeCaption={activeCaption}
-          style={style}
-          onUpdateStyle={setStyle}
-          onEditCaptionText={handleUpdateCaptionText}
-          aspectRatio={aspectRatio}
-          videoResolution={videoResolution}
-          videoFilters={videoFilters}
-          playbackRate={playbackRate}
-          onSetPlaybackRate={handleSetPlaybackRate}
-          volume={volume}
-          isMuted={isMuted}
-          onToggleMute={handleToggleMute}
-          onVolumeChange={handleVolumeChange}
-          onDropVideo={handleProcessVideoFile}
-          isTranscribing={isTranscribing}
-          whisperProgress={whisperProgress}
-        />
-
-        {/* Right Controls & Subtitle Editor Sidebar */}
-        <Sidebar
           captions={captions}
           selectedCaptionId={selectedCaptionId}
           onSelectCaption={setSelectedCaptionId}
-          onUpdateCaptionText={handleUpdateCaptionText}
           onUpdateCaptionTime={handleUpdateCaptionTime}
-          onAddCaption={handleAddCaption}
-          onDeleteCaption={handleDeleteCaption}
           onSplitCaption={handleSplitCaption}
-          onConvertToRapidOneLine={handleConvertToRapidOneLine}
-          onEnforceTwoLines={handleEnforceTwoLines}
-          onAutoSplitCaption={handleAutoSplitCaption}
-          onOpenTranslate={() => setIsTranslateOpen(true)}
-          onSeek={handleSeek}
-          currentTime={currentTime}
-          style={style}
-          onUpdateStyle={setStyle}
-          onSelectPreset={setStyle}
-          videoFilters={videoFilters}
-          onUpdateFilters={setVideoFilters}
-          onAutoTranscribe={(model, lang) => triggerAutoTranscribe(model, lang)}
-          isTranscribing={isTranscribing}
-          whisperProgress={whisperProgress}
+          onDeleteCaption={handleDeleteCaption}
+          onAddCaptionAtPlayhead={() =>
+            handleAddCaption(currentTime, Math.min(duration, currentTime + 2.5), "New Caption")
+          }
+          trimStart={trimStart}
+          trimEnd={trimEnd}
+          onUpdateTrim={(start, end) => {
+            setTrimStart(start);
+            setTrimEnd(end);
+          }}
         />
       </div>
 
-      {/* Bottom Multi-Track Timeline */}
-      <Timeline
-        currentTime={currentTime}
-        duration={duration}
-        onSeek={handleSeek}
-        captions={captions}
-        selectedCaptionId={selectedCaptionId}
-        onSelectCaption={setSelectedCaptionId}
-        onUpdateCaptionTime={handleUpdateCaptionTime}
-        onSplitCaption={handleSplitCaption}
-        onDeleteCaption={handleDeleteCaption}
-        onAddCaptionAtPlayhead={() =>
-          handleAddCaption(currentTime, Math.min(duration, currentTime + 2.5), "New Caption")
-        }
-        trimStart={trimStart}
-        trimEnd={trimEnd}
-        onUpdateTrim={(start, end) => {
-          setTrimStart(start);
-          setTrimEnd(end);
-        }}
-      />
+      {/* Mobile Navigation Tab Bar (Shown ONLY on mobile < 768px) */}
+      <div className="md:hidden border-t border-slate-800 bg-slate-950/95 backdrop-blur-md px-2 py-1.5 flex items-center justify-around z-30 shrink-0">
+        <button
+          onClick={() => setMobileTab("player")}
+          className={cn(
+            "flex flex-col items-center gap-1 py-1 px-3 rounded-lg text-[10px] font-semibold transition-colors cursor-pointer",
+            mobileTab === "player" ? "text-indigo-400 bg-slate-800" : "text-slate-400 hover:text-slate-200"
+          )}
+        >
+          <Film className="w-4 h-4" />
+          <span>Player</span>
+        </button>
+
+        <button
+          onClick={() => setMobileTab("captions")}
+          className={cn(
+            "flex flex-col items-center gap-1 py-1 px-3 rounded-lg text-[10px] font-semibold transition-colors cursor-pointer",
+            mobileTab === "captions" ? "text-indigo-400 bg-slate-800" : "text-slate-400 hover:text-slate-200"
+          )}
+        >
+          <Type className="w-4 h-4" />
+          <span>Captions ({captions.length})</span>
+        </button>
+
+        <button
+          onClick={() => setMobileTab("styles")}
+          className={cn(
+            "flex flex-col items-center gap-1 py-1 px-3 rounded-lg text-[10px] font-semibold transition-colors cursor-pointer",
+            mobileTab === "styles" ? "text-indigo-400 bg-slate-800" : "text-slate-400 hover:text-slate-200"
+          )}
+        >
+          <Palette className="w-4 h-4" />
+          <span>Styles</span>
+        </button>
+
+        <button
+          onClick={() => setMobileTab("timeline")}
+          className={cn(
+            "flex flex-col items-center gap-1 py-1 px-3 rounded-lg text-[10px] font-semibold transition-colors cursor-pointer",
+            mobileTab === "timeline" ? "text-indigo-400 bg-slate-800" : "text-slate-400 hover:text-slate-200"
+          )}
+        >
+          <Clock className="w-4 h-4" />
+          <span>Timeline</span>
+        </button>
+      </div>
 
       {/* Export & Render Modal */}
       <ExportModal

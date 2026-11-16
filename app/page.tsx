@@ -46,10 +46,15 @@ function Hero() {
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl">
           {/* Eyebrow badge */}
-          <div className="flex items-center gap-2 mb-6">
-            <Badge variant="primary" className="text-xs font-medium px-3 py-1">
-              <Sparkles className="h-3 w-3 mr-1.5" aria-hidden="true" />
-              Now with AI-powered tools
+          <div className="flex flex-wrap items-center gap-2 mb-6">
+            <Link href="/tools/video-caption-generator" className="inline-block">
+              <Badge variant="primary" className="text-xs font-semibold px-3 py-1 hover:bg-brand-500/20 transition-colors cursor-pointer">
+                <Sparkles className="h-3 w-3 mr-1.5 text-brand-400" aria-hidden="true" />
+                🔥 New: AI Video Caption Generator
+              </Badge>
+            </Link>
+            <Badge variant="secondary" className="text-xs font-medium px-3 py-1 border border-amber-500/30 text-amber-500">
+              🇱🇰 Sinhala & 50+ Languages
             </Badge>
           </div>
 

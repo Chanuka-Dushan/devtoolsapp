@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import {
   Sparkles,
@@ -14,7 +14,12 @@ import {
   Palette,
   Zap,
   Play,
-  RotateCcw,
+  Upload,
+  ArrowRight,
+  ShieldCheck,
+  CheckCircle2,
+  FileVideo,
+  MonitorSmartphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -161,80 +166,255 @@ const FAQS = [
 ];
 
 export default function VideoCaptionGeneratorPage() {
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [viewMode, setViewMode] = useState<"landing" | "studio">("landing");
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [demoMode, setDemoMode] = useState<"default" | "sinhala">("default");
+  const [isDragOver, setIsDragOver] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const studioContainerRef = useRef<HTMLDivElement>(null);
 
-  const toggleFullscreen = () => {
-    if (!studioContainerRef.current) return;
-    if (!document.fullscreenElement) {
-      studioContainerRef.current.requestFullscreen().catch(() => {});
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen().catch(() => {});
-      setIsFullscreen(false);
+  const heroFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Check URL query parameters on mount (?studio=1 or ?mode=sinhala)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("studio") === "1" || params.get("mode") === "studio") {
+        setViewMode("studio");
+      }
+      if (params.get("mode") === "sinhala") {
+        setDemoMode("sinhala");
+        setViewMode("studio");
+      }
+    }
+  }, []);
+
+  const handleSelectFile = (file: File) => {
+    if (!file) return;
+    setUploadedFile(file);
+    setViewMode("studio");
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
+  const handleHeroFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleSelectFile(file);
+    }
+    e.target.value = "";
+  };
+
+  const handleHeroDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith("video/")) {
+      handleSelectFile(file);
+    }
+  };
+
+  const handleOpenDemoStudio = (mode: "default" | "sinhala" = "default") => {
+    setUploadedFile(null);
+    setDemoMode(mode);
+    setViewMode("studio");
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const handleBackToLanding = () => {
+    setViewMode("landing");
+    setUploadedFile(null);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  // ── VIEW 1: FULL TAB STUDIO VIEW (with Mobile Responsive Design) ──
+  if (viewMode === "studio") {
+    return (
+      <div className="w-full min-h-screen bg-slate-950 flex flex-col">
+        <CaptionStudio
+          initialVideoFile={uploadedFile}
+          initialMode={demoMode}
+          isFullTab={true}
+          onBackToLanding={handleBackToLanding}
+        />
+      </div>
+    );
+  }
+
+  // ── VIEW 2: LANDING PAGE WITH BEAUTIFUL UPLOAD HERO SECTION ──
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-12">
-      {/* ── Hero / Tool Header Section ────────────────────── */}
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-5">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="primary" className="px-2.5 py-0.5 text-xs font-semibold gap-1.5 shadow-sm">
-                <Sparkles className="w-3.5 h-3.5 text-brand-400" />
-                Whisper AI Speech-to-Text
-              </Badge>
-              <Badge
-                variant="secondary"
-                className="px-2.5 py-0.5 text-xs font-semibold gap-1.5 border border-amber-500/30 text-amber-500"
-              >
-                🇱🇰 Sinhala & 50+ Languages
-              </Badge>
-              <Badge variant="default" className="px-2.5 py-0.5 text-xs font-semibold gap-1.5">
-                🔥 Viral Creator Styles
-              </Badge>
-            </div>
-            <h1 className="text-2xl sm:text-4xl font-extrabold text-foreground tracking-tight">
-              AI Video Caption & Subtitle Generator
-            </h1>
-            <p className="text-muted text-sm sm:text-base max-w-3xl leading-relaxed">
-              Auto-transcribe speech into frame-synced animated subtitles. Choose viral creator presets
-              (Hormozi, MrBeast, TikTok), translate into 50+ languages including Sinhala, and render
-              high-resolution MP4s directly in your browser.
-            </p>
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-20">
+      {/* Hidden File Input for Hero Upload */}
+      <input
+        ref={heroFileInputRef}
+        type="file"
+        accept="video/mp4,video/webm,video/quicktime,video/x-matroska"
+        onChange={handleHeroFileInputChange}
+        className="hidden"
+      />
+
+      {/* ── First Hero Section ────────────────────────────── */}
+      <div className="text-center space-y-6 max-w-4xl mx-auto">
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <Badge variant="primary" className="px-3 py-1 text-xs font-semibold gap-1.5 shadow-sm">
+            <Sparkles className="w-3.5 h-3.5 text-brand-400" />
+            OpenAI Whisper AI Powered
+          </Badge>
+          <Badge
+            variant="secondary"
+            className="px-3 py-1 text-xs font-semibold gap-1.5 border border-amber-500/30 text-amber-500"
+          >
+            🇱🇰 Sinhala & 50+ Languages
+          </Badge>
+          <Badge variant="default" className="px-3 py-1 text-xs font-semibold gap-1.5">
+            🔥 Viral Hormozi & TikTok Styles
+          </Badge>
+        </div>
+
+        {/* Headline as requested: "Do you need to generate auto caption correctly?" */}
+        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-foreground tracking-tight leading-[1.15]">
+          Do you need to generate auto caption correctly?
+        </h1>
+
+        {/* Description as requested: "upload your video here..." */}
+        <p className="text-muted text-base sm:text-xl leading-relaxed max-w-2xl mx-auto">
+          Upload your video here. Automatically transcribe voices with millisecond accuracy, animate
+          subtitles with viral kinetic word highlights, and translate into 50+ languages including Sinhala.
+        </p>
+
+        {/* ── Beautiful Upload Section ──────────────────────── */}
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragOver(true);
+          }}
+          onDragLeave={() => setIsDragOver(false)}
+          onDrop={handleHeroDrop}
+          className={cn(
+            "mt-8 max-w-3xl mx-auto rounded-3xl border-2 border-dashed transition-all duration-300 relative overflow-hidden p-8 sm:p-12 text-center",
+            isDragOver
+              ? "border-brand-500 bg-brand-500/15 scale-[1.01] shadow-2xl shadow-brand-500/20"
+              : "border-brand-500/40 hover:border-brand-500 bg-gradient-to-b from-brand-500/[0.08] via-surface to-surface shadow-2xl shadow-brand-500/5"
+          )}
+        >
+          {/* Subtle glow background */}
+          <div
+            className="absolute -top-24 -left-24 w-48 h-48 bg-brand-500/20 rounded-full blur-3xl pointer-events-none"
+            aria-hidden="true"
+          />
+          <div
+            className="absolute -bottom-24 -right-24 w-48 h-48 bg-violet-500/20 rounded-full blur-3xl pointer-events-none"
+            aria-hidden="true"
+          />
+
+          {/* Upload Icon Badge */}
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-brand-500 via-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-xl shadow-brand-500/30 mx-auto mb-6 group cursor-pointer hover:scale-105 transition-transform"
+            onClick={() => heroFileInputRef.current?.click()}
+          >
+            <Upload className="w-10 h-10 animate-bounce" />
           </div>
 
-          <div className="flex items-center gap-2">
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">
+            Upload your video to generate captions
+          </h2>
+          <p className="text-muted text-sm sm:text-base max-w-md mx-auto mb-6">
+            Drag and drop your video file here, or click the button below to browse from your device.
+          </p>
+
+          {/* Primary Action Button */}
+          <div className="flex flex-wrap items-center justify-center gap-3">
             <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleFullscreen}
-              className="gap-1.5 text-xs font-medium cursor-pointer"
+              size="lg"
+              className="gap-2.5 font-bold px-8 py-3.5 text-base shadow-xl shadow-brand-500/25 hover:shadow-brand-500/40 cursor-pointer"
+              onClick={() => heroFileInputRef.current?.click()}
             >
-              <Maximize2 className="w-3.5 h-3.5" />
-              <span>Fullscreen Studio</span>
+              <Upload className="w-5 h-5" />
+              <span>Select Video File</span>
             </Button>
+          </div>
+
+          {/* Accepted Formats Pill */}
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-xs text-muted">
+            <span className="px-2.5 py-1 rounded-full bg-surface-elevated border border-border font-medium">
+              MP4
+            </span>
+            <span className="px-2.5 py-1 rounded-full bg-surface-elevated border border-border font-medium">
+              WebM
+            </span>
+            <span className="px-2.5 py-1 rounded-full bg-surface-elevated border border-border font-medium">
+              MOV
+            </span>
+            <span className="px-2.5 py-1 rounded-full bg-surface-elevated border border-border font-medium">
+              Up to 4K resolution
+            </span>
+            <span className="px-2.5 py-1 rounded-full bg-surface-elevated border border-border font-medium">
+              No file size limits
+            </span>
+          </div>
+
+          {/* Fast Trial Quick Launchers */}
+          <div className="mt-8 pt-6 border-t border-border/60 flex flex-wrap items-center justify-center gap-3">
+            <span className="text-xs text-muted font-medium w-full sm:w-auto">Don&apos;t have a video right now?</span>
+            <button
+              onClick={() => handleOpenDemoStudio("default")}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-border bg-surface text-foreground hover:bg-surface-elevated text-xs font-semibold transition-colors cursor-pointer"
+            >
+              <Play className="w-3.5 h-3.5 text-brand-500 fill-current" />
+              <span>Try with Sample Demo</span>
+            </button>
+
+            <button
+              onClick={() => handleOpenDemoStudio("sinhala")}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 text-xs font-semibold transition-colors cursor-pointer"
+            >
+              <span>🇱🇰</span>
+              <span>Try Sinhala Subtitles Demo</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 4 Feature Badges beneath upload */}
+        <div className="pt-6 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-4xl mx-auto text-left">
+          <div className="p-4 rounded-xl bg-surface border border-border flex items-start gap-3">
+            <Mic className="w-5 h-5 text-brand-500 shrink-0 mt-0.5" />
+            <div>
+              <span className="text-xs font-bold text-foreground block">Whisper AI Sync</span>
+              <span className="text-[11px] text-muted">Accurate word-level timings</span>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-surface border border-border flex items-start gap-3">
+            <Zap className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <span className="text-xs font-bold text-foreground block">Kinetic Highlight</span>
+              <span className="text-[11px] text-muted">Hormozi & TikTok styles</span>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-surface border border-border flex items-start gap-3">
+            <Languages className="w-5 h-5 text-purple-500 shrink-0 mt-0.5" />
+            <div>
+              <span className="text-xs font-bold text-foreground block">Sinhala & 50+ Langs</span>
+              <span className="text-[11px] text-muted">Instant translation</span>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-surface border border-border flex items-start gap-3">
+            <MonitorSmartphone className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+            <div>
+              <span className="text-xs font-bold text-foreground block">Full Mobile Design</span>
+              <span className="text-[11px] text-muted">Optimized for all screens</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ── Native Interactive Caption Studio ──────────────── */}
-      <div
-        ref={studioContainerRef}
-        id="studio-frame-container"
-        className={cn(
-          "w-full transition-all duration-300",
-          isFullscreen ? "fixed inset-0 z-50 p-2 bg-slate-950 flex flex-col justify-center" : ""
-        )}
-      >
-        <CaptionStudio />
-      </div>
-
       {/* ── Preset Caption Templates ───────────────────────── */}
-      <div className="space-y-6 pt-4">
+      <div className="space-y-6 pt-6">
         <div className="text-center space-y-2">
           <Badge variant="secondary" className="text-xs font-semibold">
             Creator Presets
@@ -359,7 +539,7 @@ export default function VideoCaptionGeneratorPage() {
                 <button
                   type="button"
                   onClick={() => setOpenFaq(isOpen ? null : idx)}
-                  className="w-full flex items-center justify-between p-5 text-left font-semibold text-foreground hover:text-brand-500 transition-colors"
+                  className="w-full flex items-center justify-between p-5 text-left font-semibold text-foreground hover:text-brand-500 transition-colors cursor-pointer"
                 >
                   <span className="text-sm sm:text-base">{faq.q}</span>
                   <ChevronDown

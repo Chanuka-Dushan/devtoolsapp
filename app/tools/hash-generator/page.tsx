@@ -136,7 +136,7 @@ export default function HashGeneratorTool() {
         <div className="rounded-lg border border-border bg-surface-elevated px-4 py-3 text-xs text-muted">
           <strong className="text-foreground">Security note:</strong> SHA-256 and SHA-512 are recommended for security purposes.
           SHA-1 and MD5 have known vulnerabilities and should not be used for password hashing or digital signatures.
-          All computation happens in your browser — nothing is sent to a server.
+          All computation happens in your browser - nothing is sent to a server.
         </div>
       </ToolLayout>
     </div>

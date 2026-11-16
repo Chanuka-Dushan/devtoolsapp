@@ -42,10 +42,10 @@ ${code}
 \`\`\`
 
 Structure your response with:
-1. **Probable Cause** — what is most likely causing the issue
-2. **Explanation** — why this causes the observed error
-3. **Suggested Fix** — step-by-step fix
-4. **Fixed Code** — provide the corrected code
+1. **Probable Cause** - what is most likely causing the issue
+2. **Explanation** - why this causes the observed error
+3. **Suggested Fix** - step-by-step fix
+4. **Fixed Code** - provide the corrected code
 
 IMPORTANT: State clearly that your suggestions are AI-generated and should be tested. Do not guarantee correctness.`;
 

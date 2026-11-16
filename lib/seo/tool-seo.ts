@@ -16,7 +16,7 @@ export function generateToolMetadata(slug: string): Metadata {
     };
   }
 
-  const title = `${tool.name} — Free Online Tool | DevTools Platform`;
+  const title = `${tool.name} - Free Online Tool | DevTools Platform`;
   const description =
     tool.longDescription ||
     `${tool.description} Free, instant, and private. 100% runs directly in your browser.`;

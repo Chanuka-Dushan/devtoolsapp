@@ -13,11 +13,11 @@ import { Badge } from "@/components/ui/Badge";
 const tool = getToolBySlug("regex-tester")!;
 
 const FLAGS: { flag: RegexFlag; label: string; description: string }[] = [
-  { flag: "g", label: "g", description: "Global — find all matches" },
+  { flag: "g", label: "g", description: "Global - find all matches" },
   { flag: "i", label: "i", description: "Case insensitive" },
-  { flag: "m", label: "m", description: "Multiline — ^ and $ match line boundaries" },
-  { flag: "s", label: "s", description: "Dotall — . matches newlines" },
-  { flag: "u", label: "u", description: "Unicode — treat pattern as Unicode" },
+  { flag: "m", label: "m", description: "Multiline - ^ and $ match line boundaries" },
+  { flag: "s", label: "s", description: "Dotall - . matches newlines" },
+  { flag: "u", label: "u", description: "Unicode - treat pattern as Unicode" },
 ];
 
 export default function RegexTesterTool() {

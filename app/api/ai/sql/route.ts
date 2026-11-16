@@ -38,9 +38,9 @@ export async function POST(req: NextRequest) {
 ${schemaContext ? `\n**Database Schema / Context:**\n${schemaContext}\n` : ""}
 
 Respond with:
-1. **SQL Query** — the complete, formatted SQL query in a code block
-2. **Explanation** — plain English explanation of what the query does
-3. **Warnings** — any destructive operations (DELETE/DROP/UPDATE without WHERE), performance concerns, or dialect-specific caveats
+1. **SQL Query** - the complete, formatted SQL query in a code block
+2. **Explanation** - plain English explanation of what the query does
+3. **Warnings** - any destructive operations (DELETE/DROP/UPDATE without WHERE), performance concerns, or dialect-specific caveats
 
 IMPORTANT SAFETY NOTES:
 - If the query involves DELETE, DROP, TRUNCATE, or UPDATE without a WHERE clause, add a clear warning

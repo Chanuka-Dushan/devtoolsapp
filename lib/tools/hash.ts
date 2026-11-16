@@ -2,7 +2,7 @@
  * Hash Generator Tool Logic
  *
  * Uses the Web Crypto API (SubtleCrypto) for SHA algorithms.
- * MD5 is implemented in pure JavaScript (not cryptographically secure — for legacy use only).
+ * MD5 is implemented in pure JavaScript (not cryptographically secure - for legacy use only).
  *
  * All computation happens client-side. Input is never sent to a server.
  */

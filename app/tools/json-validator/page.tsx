@@ -22,7 +22,7 @@ export default function JSONValidatorTool() {
   const handleValidate = useCallback(() => {
     const result = validateJSON(input);
     if (result.success) {
-      setStatus({ type: "success", message: "✓ Valid JSON — no syntax errors found." });
+      setStatus({ type: "success", message: "✓ Valid JSON - no syntax errors found." });
     } else {
       setStatus({ type: "error", message: result.error ?? "Invalid JSON." });
     }

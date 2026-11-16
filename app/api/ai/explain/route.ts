@@ -52,10 +52,10 @@ export async function POST(request: NextRequest) {
 ${styleInstructions[style]}
 
 Structure your response with these sections:
-1. **Summary** — what the code does in 1-3 sentences
-2. **Key Functions/Logic** — explain important parts
-3. **Potential Issues** — any bugs, security concerns, or edge cases
-4. **Suggestions** — improvements (if any)
+1. **Summary** - what the code does in 1-3 sentences
+2. **Key Functions/Logic** - explain important parts
+3. **Potential Issues** - any bugs, security concerns, or edge cases
+4. **Suggestions** - improvements (if any)
 
 Code to explain:
 \`\`\`${language !== "auto" ? language : ""}

@@ -1,6 +1,6 @@
 /**
  * JSON Tool Logic
- * Pure functions — no side effects, fully testable.
+ * Pure functions - no side effects, fully testable.
  */
 
 export interface FormatResult {

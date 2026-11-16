@@ -117,7 +117,7 @@ export const TOOLS: ToolConfig[] = [
   {
     slug: "uuid",
     name: "UUID Generator",
-    description: "Generate UUID v4 identifiers — single or in bulk.",
+    description: "Generate UUID v4 identifiers - single or in bulk.",
     longDescription:
       "Generate cryptographically random UUID v4 identifiers. Create single UUIDs or generate them in bulk for database seeding and testing.",
     category: "generators",
@@ -134,7 +134,7 @@ export const TOOLS: ToolConfig[] = [
     name: "JWT Decoder",
     description: "Decode JWT tokens and inspect header, payload, and claims.",
     longDescription:
-      "Decode JSON Web Tokens to inspect their header and payload. View expiration times, issued-at dates, and all claims. Note: this tool decodes only — it does NOT verify the token signature.",
+      "Decode JSON Web Tokens to inspect their header and payload. View expiration times, issued-at dates, and all claims. Note: this tool decodes only - it does NOT verify the token signature.",
     category: "developer",
     tags: ["jwt", "token", "decode", "auth"],
     icon: "KeyRound",
@@ -195,7 +195,7 @@ export const TOOLS: ToolConfig[] = [
     name: "AI Code Explainer",
     description: "Get plain-English explanations of any code snippet.",
     longDescription:
-      "Paste any code and get a clear, plain-English explanation. Understand what it does, identify potential issues, and learn about complexity — powered by AI.",
+      "Paste any code and get a clear, plain-English explanation. Understand what it does, identify potential issues, and learn about complexity - powered by AI.",
     category: "ai",
     tags: ["ai", "code", "explain", "learn"],
     icon: "BookOpen",

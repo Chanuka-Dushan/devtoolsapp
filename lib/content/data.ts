@@ -172,7 +172,7 @@ console.log(strongPasswordRegex.test("weakpass"));      // false`,
     steps: [
       {
         title: "1. Anatomy of a Token",
-        content: "A JWT consists of three Base64URL-encoded strings separated by dots: Header.Payload.Signature. The payload is not encrypted—it is merely encoded and readable by anyone.",
+        content: "A JWT consists of three Base64URL-encoded strings separated by dots: Header.Payload.Signature. The payload is not encrypted - it is merely encoded and readable by anyone.",
       },
       {
         title: "2. Decoding vs Verifying",

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 export const metadata: Metadata = {
   title: "AI Developer Tools",
   description:
-    "AI-powered developer tools — code explainer, AI debugger, SQL generator, and more. Free to use.",
+    "AI-powered developer tools - code explainer, AI debugger, SQL generator, and more. Free to use.",
 };
 
 export default function AIToolsPage() {

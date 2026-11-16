@@ -34,7 +34,7 @@ export interface JWTDecodeResult {
   error?: string;
   /** Expiration date if exp claim is present */
   expiresAt?: Date;
-  /** Whether the token is expired (based on exp claim only — NOT cryptographic verification) */
+  /** Whether the token is expired (based on exp claim only - NOT cryptographic verification) */
   isExpired?: boolean;
 }
 

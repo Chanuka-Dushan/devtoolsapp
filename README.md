@@ -1,6 +1,6 @@
 # devtoolsapp (MagicTools.tech)
 
-> **MagicTools.tech** — Modern Developer Utilities, Media Converters, AI Code Assistants, and SEO Audit Platform.
+> **MagicTools.tech** - Modern Developer Utilities, Media Converters, AI Code Assistants, and SEO Audit Platform.
 
 Live URL: **[https://magictools.tech](https://magictools.tech)**
 

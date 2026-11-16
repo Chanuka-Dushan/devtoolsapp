@@ -24,11 +24,11 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
   ),
   title: {
-    default: "DevTools Platform — Free Developer Tools & AI Utilities",
+    default: "DevTools Platform - Free Developer Tools & AI Utilities",
     template: "%s | DevTools Platform",
   },
   description:
-    "Fast, free developer tools and AI-powered utilities. JSON formatter, Base64, JWT decoder, regex tester, UUID generator, and more — all in your browser.",
+    "Fast, free developer tools and AI-powered utilities. JSON formatter, Base64, JWT decoder, regex tester, UUID generator, and more - all in your browser.",
   keywords: [
     "developer tools",
     "json formatter",
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "/",
     siteName: "DevTools Platform",
-    title: "DevTools Platform — Free Developer Tools & AI Utilities",
+    title: "DevTools Platform - Free Developer Tools & AI Utilities",
     description:
       "Fast, free developer tools and AI-powered utilities for developers worldwide.",
     images: [
@@ -61,7 +61,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "DevTools Platform — Free Developer Tools & AI Utilities",
+    title: "DevTools Platform - Free Developer Tools & AI Utilities",
     description:
       "Fast, free developer tools and AI-powered utilities for developers worldwide.",
     images: ["/og-image.png"],

@@ -3,7 +3,7 @@
  *
  * This module provides a provider-agnostic interface for AI completions.
  * Switch between Gemini, OpenAI, or other providers via environment variables.
- * Never hard-code API keys — always use environment variables.
+ * Never hard-code API keys - always use environment variables.
  */
 
 export type AIProvider = "openrouter" | "gemini" | "openai";

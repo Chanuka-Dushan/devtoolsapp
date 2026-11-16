@@ -16,6 +16,7 @@ import {
 } from "./utils/text";
 import { detectAspectRatio } from "./utils/resolution";
 import { captionFetch } from "./api";
+import { getPendingVideo } from "@/lib/utils/pendingVideo";
 import { CaptionSegment, StylePreset, VideoFilters, VideoResolution } from "./types";
 import { Film, Type, Palette, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -97,12 +98,18 @@ export function CaptionStudio({
       .catch(() => setBackendOnline(false));
   }, []);
 
-  // Handle Initial Props (e.g. from Landing Page upload or Sinhala preset)
+  // Handle Initial Props or Pending Uploads (e.g. from Landing Page upload or Sinhala preset)
   useEffect(() => {
     if (initialVideoFile) {
       handleProcessVideoFile(initialVideoFile);
-    } else if (initialMode === "sinhala") {
-      handleLoadSinhalaDemo();
+    } else {
+      getPendingVideo().then((pending) => {
+        if (pending) {
+          handleProcessVideoFile(pending);
+        } else if (initialMode === "sinhala") {
+          handleLoadSinhalaDemo();
+        }
+      });
     }
   }, [initialVideoFile, initialMode]);
 

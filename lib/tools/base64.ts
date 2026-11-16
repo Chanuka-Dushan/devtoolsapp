@@ -11,7 +11,7 @@ export interface Base64Result {
 
 /**
  * Encode a UTF-8 string to Base64.
- * Handles the full Unicode range — not limited to ASCII.
+ * Handles the full Unicode range - not limited to ASCII.
  */
 export function encodeBase64(input: string): Base64Result {
   if (!input) {

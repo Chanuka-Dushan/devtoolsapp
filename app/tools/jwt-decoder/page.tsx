@@ -112,7 +112,7 @@ export default function JWTDecoderTool() {
             <ToolPanel label="Signature">
               <code className="text-xs font-mono text-muted break-all">{result.signature}</code>
               <p className="text-xs text-amber-600 dark:text-amber-400 mt-3">
-                ⚠ Signature displayed for reference only — NOT verified.
+                ⚠ Signature displayed for reference only - NOT verified.
               </p>
             </ToolPanel>
           </div>

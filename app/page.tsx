@@ -25,13 +25,14 @@ import { Badge } from "@/components/ui/Badge";
 import { POPULAR_TOOLS, AI_TOOLS } from "@/lib/tools/registry";
 import { AdSlot } from "@/components/monetization/AdSlot";
 import { getFreeUdemyCourses } from "@/lib/courses/feed";
+import { CaptionHeroSection } from "@/components/home/CaptionHeroSection";
 
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 function Hero() {
   return (
-    <section className="relative overflow-hidden py-20 sm:py-28 lg:py-36">
+    <section className="relative overflow-hidden pt-12 pb-20 sm:pt-16 sm:pb-28 lg:pb-36 border-t border-border/40">
       {/* Background grid */}
-      <div className="absolute inset-0 hero-grid opacity-60" aria-hidden="true" />
+      <div className="absolute inset-0 hero-grid opacity-40" aria-hidden="true" />
 
       {/* Glow orbs */}
       <div
@@ -47,14 +48,11 @@ function Hero() {
         <div className="max-w-3xl">
           {/* Eyebrow badge */}
           <div className="flex flex-wrap items-center gap-2 mb-6">
-            <Link href="/tools/video-caption-generator" className="inline-block">
-              <Badge variant="primary" className="text-xs font-semibold px-3 py-1 hover:bg-brand-500/20 transition-colors cursor-pointer">
-                <Sparkles className="h-3 w-3 mr-1.5 text-brand-400" aria-hidden="true" />
-                🔥 New: AI Video Caption Generator
-              </Badge>
-            </Link>
-            <Badge variant="secondary" className="text-xs font-medium px-3 py-1 border border-amber-500/30 text-amber-500">
-              🇱🇰 Sinhala & 50+ Languages
+            <Badge variant="secondary" className="text-xs font-semibold px-3 py-1 bg-surface border border-border text-foreground">
+              🛠️ 50+ Free Developer Utilities &amp; AI Tools
+            </Badge>
+            <Badge variant="secondary" className="text-xs font-medium px-3 py-1 border border-brand-500/30 text-brand-500">
+              ⚡ Client-Side &amp; Instant
             </Badge>
           </div>
 
@@ -68,7 +66,7 @@ function Hero() {
           <p className="mt-6 text-lg sm:text-xl text-muted max-w-2xl leading-relaxed">
             A professional platform of free developer tools and AI-powered
             utilities. Format JSON, decode JWTs, generate UUIDs, explain code,
-            and much more — all running in your browser, no sign-up required.
+            and much more - all running in your browser, no sign-up required.
           </p>
 
           {/* CTAs */}
@@ -135,7 +133,7 @@ function PopularToolsSection() {
               Popular Developer Tools
             </h2>
             <p className="text-muted mt-1 text-sm">
-              The tools developers use most — fast, free, no registration.
+              The tools developers use most - fast, free, no registration.
             </p>
           </div>
           <Link
@@ -156,7 +154,7 @@ function PopularToolsSection() {
                 href={tool.path}
                 id={`tool-card-${tool.slug}`}
                 className="group flex items-start gap-4 rounded-xl border border-border bg-surface p-5 hover:border-brand-500/40 hover:shadow-md hover:shadow-brand-500/5 transition-all duration-200"
-                aria-label={`${tool.name} — ${tool.description}`}
+                aria-label={`${tool.name} - ${tool.description}`}
               >
                 <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-brand-50 dark:bg-brand-900/30 flex items-center justify-center group-hover:bg-brand-100 dark:group-hover:bg-brand-900/50 transition-colors">
                   <Icon
@@ -248,7 +246,7 @@ function AIToolsSection() {
                 href={tool.path}
                 id={`ai-tool-card-${tool.slug}`}
                 className="group relative rounded-xl border border-border bg-surface p-5 overflow-hidden hover:border-violet-500/40 hover:shadow-lg hover:shadow-violet-500/5 transition-all duration-200"
-                aria-label={`${tool.name} — ${tool.description}`}
+                aria-label={`${tool.name} - ${tool.description}`}
               >
                 {/* Subtle gradient corner */}
                 <div
@@ -306,7 +304,7 @@ const sampleTutorials = [
   },
   {
     slug: "jwt-authentication-nodejs",
-    title: "JWT Authentication in Node.js — Complete Guide",
+    title: "JWT Authentication in Node.js - Complete Guide",
     category: "Backend",
     difficulty: "Intermediate",
     mins: 20,
@@ -643,6 +641,10 @@ async function CoursesSection() {
 export default async function HomePage() {
   return (
     <>
+      {/* First Hero Section: Video Auto Caption Generator & Upload Dropzone */}
+      <CaptionHeroSection />
+
+      {/* Developer Tools Hero (shifted down) */}
       <Hero />
       <PopularToolsSection />
       <AIToolsSection />

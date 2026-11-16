@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = {
   title: "Developer Tools",
   description:
-    "Free online developer, PDF & Image tools — Image converter, resizer, SVG vectorizer, watermark remover, PDF converters, and more.",
+    "Free online developer, PDF & Image tools - Image converter, resizer, SVG vectorizer, watermark remover, PDF converters, and more.",
 };
 
 const iconMap: Record<string, React.ElementType> = {
@@ -70,7 +70,7 @@ export default function ToolsPage() {
           Developer Tools
         </h1>
         <p className="text-muted mt-2 text-sm max-w-xl">
-          {DEVELOPER_TOOLS.length} free tools — all run in your browser.
+          {DEVELOPER_TOOLS.length} free tools - all run in your browser.
           No sign-up, no data storage.
         </p>
       </div>

@@ -23,7 +23,7 @@ import { ExportFilenameModal } from "@/components/tools/ExportFilenameModal";
 import { Document, Packer, Paragraph, TextRun } from "docx";
 import { jsPDF } from "jspdf";
 
-const SAMPLE_JOB_DESCRIPTION = `Senior Full-Stack Engineer — NextGen Cloud Platform
+const SAMPLE_JOB_DESCRIPTION = `Senior Full-Stack Engineer - NextGen Cloud Platform
 
 About the Role:
 We are seeking an exceptional Senior Full-Stack Engineer to architect, build, and scale our core cloud platform. You will lead technical design, deliver high-performance microservices, and build intuitive, lightning-fast web applications for hundreds of thousands of developers worldwide.

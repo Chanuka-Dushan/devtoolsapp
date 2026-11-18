@@ -75,10 +75,23 @@ export function Header({
           <span className="hidden xs:inline-block text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
             Studio
           </span>
-          <span className="hidden md:inline-flex text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Whisper AI
-          </span>
+          {backendOnline ? (
+            <span
+              className="hidden md:inline-flex text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 items-center gap-1"
+              title="Whisper AI backend is connected and ready"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Whisper AI Online
+            </span>
+          ) : (
+            <span
+              className="hidden md:inline-flex text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 items-center gap-1"
+              title="Whisper backend is offline. Local dev: run 'npm run caption:backend'. Hosted site: set NEXT_PUBLIC_CAPTION_BACKEND_URL in hosting dashboard."
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+              AI Backend Offline
+            </span>
+          )}
         </div>
       </div>
 

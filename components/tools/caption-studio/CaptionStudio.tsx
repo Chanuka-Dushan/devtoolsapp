@@ -84,6 +84,7 @@ export function CaptionStudio({
   const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
   const [whisperProgress, setWhisperProgress] = useState<string>("");
   const [backendOnline, setBackendOnline] = useState<boolean>(true);
+  const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
 
   // Modals
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
@@ -495,6 +496,7 @@ export function CaptionStudio({
 
     setIsTranscribing(true);
     setWhisperProgress("Extracting speech & generating synchronized captions...");
+    setTranscriptionError(null);
 
     const fileToUse = fileOverride || uploadedFile;
     const pathToUse = customPath || videoPath;
@@ -543,6 +545,11 @@ export function CaptionStudio({
       }
     } catch (e: any) {
       console.warn("Transcription note:", e.message);
+      setTranscriptionError(
+        e.message?.includes("404") || e.message?.includes("Failed to fetch")
+          ? "AI Caption Backend is unreachable (404/Connection Error). If running on a hosted site, please set NEXT_PUBLIC_CAPTION_BACKEND_URL. In local dev, run 'npm run caption:backend'."
+          : e.message || "Failed to generate captions from speech."
+      );
       // Fallback for demo sample if backend had a temporary connection hiccup
       if (videoSrc === "/samples/sample.mp4" || !fileToUse) {
         setCaptions(INITIAL_CAPTIONS);
@@ -610,6 +617,36 @@ export function CaptionStudio({
         backendOnline={backendOnline}
         onBackToLanding={onBackToLanding}
       />
+
+      {/* AI Backend Offline / Transcription Error Alert */}
+      {transcriptionError && (
+        <div className="bg-amber-950/90 border-b border-amber-500/40 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs text-amber-200 animate-fade-in z-30">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0 animate-pulse" />
+            <span>
+              <strong className="text-amber-100">AI Server Notice:</strong> {transcriptionError}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => {
+                setCaptions(INITIAL_CAPTIONS);
+                setTranscriptionError(null);
+              }}
+              className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 rounded text-[11px] font-semibold transition-colors cursor-pointer"
+            >
+              Load Sample Captions
+            </button>
+            <button
+              onClick={() => setTranscriptionError(null)}
+              className="px-2 py-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition-colors text-xs font-bold"
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Hidden File Input for Video Upload */}
       <input

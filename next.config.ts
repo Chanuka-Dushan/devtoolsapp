@@ -41,8 +41,13 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  // Rewrites to proxy local Caption Tool Studio and API
+  // Rewrites to proxy Caption Tool Studio and API
   async rewrites() {
+    const captionBackend =
+      process.env.CAPTION_BACKEND_URL ||
+      process.env.NEXT_PUBLIC_CAPTION_BACKEND_URL ||
+      "http://127.0.0.1:8000";
+
     return [
       {
         source: "/caption-studio/:path*",
@@ -50,7 +55,7 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/caption-api/:path*",
-        destination: "http://localhost:8000/:path*",
+        destination: `${captionBackend.replace(/\/+$/, "")}/:path*`,
       },
     ];
   },

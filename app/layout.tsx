@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -106,11 +107,19 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: ThemeScript }} />
         <link rel="icon" href="/tool.png" type="image/png" sizes="any" />
         <link rel="apple-touch-icon" href="/tool.png" />
-        {/* Google AdSense */}
+        {/* Defensive guard for AdSense / Google Tag Measurement stubs */}
         <script
+          dangerouslySetInnerHTML={{
+            __html: `window.google_tag_data = window.google_tag_data || {}; window.google_tag_data.ics = window.google_tag_data.ics || {}; window.google_tag_data.ics.entries = window.google_tag_data.ics.entries || {}; window.dataLayer = window.dataLayer || [];`,
+          }}
+        />
+        {/* Google AdSense - Safe non-blocking load */}
+        <Script
+          id="google-adsense"
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8977352924106394"
           crossOrigin="anonymous"
+          strategy="lazyOnload"
         />
       </head>
       <body className="min-h-dvh flex flex-col antialiased">

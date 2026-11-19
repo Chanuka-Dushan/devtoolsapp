@@ -46,6 +46,7 @@ interface VideoPlayerProps {
   onDropVideo?: (file: File) => void;
   isTranscribing?: boolean;
   whisperProgress?: string;
+  progressPercentage?: number;
 }
 
 export function VideoPlayer({
@@ -72,6 +73,7 @@ export function VideoPlayer({
   onDropVideo,
   isTranscribing,
   whisperProgress,
+  progressPercentage = 0,
 }: VideoPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDraggingCaption, setIsDraggingCaption] = useState(false);
@@ -263,12 +265,60 @@ export function VideoPlayer({
           </div>
         )}
 
-        {/* Live Whisper Transcribing Progress Pill */}
+        {/* Live Upload & Whisper Transcribing Progress Card with Percentage */}
         {isTranscribing && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-purple-500/40 text-purple-300 shadow-2xl backdrop-blur-md text-xs font-medium">
-            <span className="w-3.5 h-3.5 rounded-full border-2 border-purple-400/30 border-t-purple-400 animate-spin" />
-            <Sparkles className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
-            <span>{whisperProgress || "Whisper AI processing speech..."}</span>
+          <div className="absolute top-6 left-1/2 -translate-x-1/2 z-40 w-11/12 max-w-md rounded-2xl bg-slate-950/95 border border-indigo-500/40 shadow-2xl backdrop-blur-xl p-4 text-slate-100 animate-in fade-in zoom-in-95 duration-200 select-none">
+            <div className="flex items-center justify-between gap-3 mb-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 shrink-0">
+                  {progressPercentage >= 100 ? (
+                    <span className="text-emerald-400 font-bold text-sm">✓</span>
+                  ) : (
+                    <Sparkles className="w-4 h-4 animate-pulse" />
+                  )}
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-white tracking-wide">
+                      {progressPercentage >= 100
+                        ? "Captions Generated Successfully!"
+                        : progressPercentage < 50
+                        ? "Uploading & Extracting Audio"
+                        : "Generating Synchronized Captions"}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-slate-400 truncate">
+                    {whisperProgress || "AI speech transcription in progress..."}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0 px-2 py-0.5 rounded-lg bg-indigo-500/20 border border-indigo-500/40 font-mono text-xs font-black text-indigo-300">
+                <span>{progressPercentage}%</span>
+              </div>
+            </div>
+
+            {/* Glowing animated progress bar */}
+            <div className="w-full h-2 rounded-full bg-slate-800/90 overflow-hidden relative border border-slate-700/60 p-[1px]">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-amber-400 transition-all duration-300 ease-out shadow-sm shadow-indigo-500/50 relative"
+                style={{ width: `${Math.min(100, Math.max(4, progressPercentage))}%` }}
+              >
+                <div className="absolute inset-0 bg-white/25 animate-pulse" />
+              </div>
+            </div>
+
+            <div className="mt-2 flex items-center justify-between text-[10px] text-slate-400 font-medium">
+              <span>
+                {progressPercentage < 50
+                  ? "Phase 1: Video Upload & Audio Detection"
+                  : progressPercentage < 90
+                  ? "Phase 2: Whisper AI Voice Recognition"
+                  : "Phase 3: Millisecond Word-Level Sync"}
+              </span>
+              <span className={progressPercentage >= 100 ? "text-emerald-400 font-semibold" : "text-amber-400 font-semibold"}>
+                {progressPercentage >= 100 ? "100% Ready ✓" : `${progressPercentage}%`}
+              </span>
+            </div>
           </div>
         )}
 

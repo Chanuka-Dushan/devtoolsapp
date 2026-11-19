@@ -46,6 +46,7 @@ interface SidebarProps {
   onAutoTranscribe: (model?: string, lang?: string) => void;
   isTranscribing: boolean;
   whisperProgress: string;
+  progressPercentage?: number;
 }
 
 export function Sidebar({
@@ -71,6 +72,7 @@ export function Sidebar({
   onAutoTranscribe,
   isTranscribing,
   whisperProgress,
+  progressPercentage = 0,
 }: SidebarProps) {
   const [activeTab, setActiveTab] = useState<"captions" | "styles" | "filters">("captions");
   const [searchQuery, setSearchQuery] = useState("");
@@ -173,18 +175,32 @@ export function Sidebar({
             <button
               onClick={() => onAutoTranscribe(whisperModel, whisperLang)}
               disabled={isTranscribing}
-              className="w-full py-1.5 px-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white text-xs font-semibold rounded-lg shadow-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
+              className="w-full py-2 px-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-400 text-white text-xs font-semibold rounded-lg shadow-sm flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer relative overflow-hidden"
             >
               {isTranscribing ? (
                 <>
-                  <span className="w-3 h-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                  <span>{whisperProgress || "Transcribing..."}</span>
+                  <div className="w-full flex items-center justify-between gap-1.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="w-3 h-3 rounded-full border-2 border-white/30 border-t-white animate-spin shrink-0" />
+                      <span className="truncate text-[11px]">{whisperProgress || "Transcribing..."}</span>
+                    </div>
+                    <span className="font-mono text-[11px] font-bold text-amber-300 shrink-0">
+                      {progressPercentage}%
+                    </span>
+                  </div>
+                  {/* Embedded progress bar */}
+                  <div className="w-full h-1 bg-slate-700/80 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-amber-400 via-purple-400 to-indigo-300 transition-all duration-200"
+                      style={{ width: `${Math.min(100, Math.max(5, progressPercentage))}%` }}
+                    />
+                  </div>
                 </>
               ) : (
-                <>
-                  <Sparkles className="w-3.5 h-3.5" />
+                <div className="flex items-center justify-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-200" />
                   <span>Auto Transcribe Voice</span>
-                </>
+                </div>
               )}
             </button>
           </div>

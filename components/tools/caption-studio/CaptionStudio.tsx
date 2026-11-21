@@ -531,7 +531,8 @@ export function CaptionStudio({
     }
     if (pathToUse) {
       formData.append("video_path", pathToUse);
-    } else if (fileToUse) {
+    }
+    if (fileToUse) {
       formData.append("file", fileToUse);
     }
 
@@ -578,28 +579,39 @@ export function CaptionStudio({
       clearInterval(progressInterval);
       console.warn("Transcription note:", e.message);
 
-      // Intelligent Client-Side Fallback: guaranteed synchronized captions on hosted sites
-      const isSinhala = language === "si" || initialMode === "sinhala";
-      const sampleList = isSinhala ? SINHALA_DEMO_CAPTIONS : INITIAL_CAPTIONS;
-      const vidDur = duration || (videoRef.current ? videoRef.current.duration : 0) || 24;
-      const scale = vidDur > 5 ? vidDur / 24 : 1;
+      const isUserVideo = fileToUse && videoSrc !== "/samples/sample.mp4";
 
-      const adjustedCaptions = sampleList.map((seg, idx) => ({
-        ...seg,
-        id: idx + 1,
-        start: Math.round(seg.start * scale * 100) / 100,
-        end: Math.round(seg.end * scale * 100) / 100,
-        words: seg.words?.map((w) => ({
-          ...w,
-          start: Math.round(w.start * scale * 100) / 100,
-          end: Math.round(w.end * scale * 100) / 100,
-        })),
-      }));
+      if (isUserVideo) {
+        // For real user video: Do NOT fake or overwrite with hardcoded captions!
+        setTranscriptionError(
+          `Speech transcription could not be completed: ${
+            e.message || "Whisper backend connection error."
+          }. Please verify the Python AI backend is running on port 8000.`
+        );
+      } else {
+        // Only for demo sample video: load demo sample captions
+        const isSinhala = language === "si" || initialMode === "sinhala";
+        const sampleList = isSinhala ? SINHALA_DEMO_CAPTIONS : INITIAL_CAPTIONS;
+        const vidDur = duration || (videoRef.current ? videoRef.current.duration : 0) || 24;
+        const scale = vidDur > 5 ? vidDur / 24 : 1;
 
-      setCaptions(adjustedCaptions);
-      setProgressPercentage(100);
-      setWhisperProgress("Captions generated successfully! 100%");
-      await new Promise((r) => setTimeout(r, 650));
+        const adjustedCaptions = sampleList.map((seg, idx) => ({
+          ...seg,
+          id: idx + 1,
+          start: Math.round(seg.start * scale * 100) / 100,
+          end: Math.round(seg.end * scale * 100) / 100,
+          words: seg.words?.map((w) => ({
+            ...w,
+            start: Math.round(w.start * scale * 100) / 100,
+            end: Math.round(w.end * scale * 100) / 100,
+          })),
+        }));
+
+        setCaptions(adjustedCaptions);
+        setProgressPercentage(100);
+        setWhisperProgress("Demo captions ready! 100%");
+        await new Promise((r) => setTimeout(r, 650));
+      }
     } finally {
       clearInterval(progressInterval);
       setIsTranscribing(false);

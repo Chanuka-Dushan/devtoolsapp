@@ -40,7 +40,12 @@ export const getApiUrls = (endpoint: string): string[] => {
   urls.push(`/caption-api${cleanEndpoint}`);
 
   // 4. Built-in Next.js serverless route `/api/caption` (Always works on hosted domains like magictools.tech)
-  urls.push(`/api/caption${cleanEndpoint}`);
+  const subPath = cleanEndpoint.startsWith("/api/")
+    ? cleanEndpoint.substring(4)
+    : cleanEndpoint.startsWith("/")
+    ? cleanEndpoint
+    : `/${cleanEndpoint}`;
+  urls.push(`/api/caption${subPath}`);
 
   // Deduplicate URLs while preserving priority order
   return Array.from(new Set(urls));

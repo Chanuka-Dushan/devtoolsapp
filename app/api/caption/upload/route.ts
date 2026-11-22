@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ensureBackendRunning } from "@/lib/caption/ensureBackend";
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,13 +10,18 @@ export async function POST(request: NextRequest) {
       process.env.CAPTION_BACKEND_URL ||
       process.env.NEXT_PUBLIC_CAPTION_BACKEND_URL;
     const isProduction = process.env.NODE_ENV === "production";
-    const backendUrl = configuredBackend || (!isProduction ? "http://127.0.0.1:8000" : null);
+    let backendUrl = configuredBackend || (!isProduction ? "http://127.0.0.1:8000" : null);
+
+    // In local development, ensure the backend process is running
+    if (!isProduction && (!configuredBackend || configuredBackend.includes("127.0.0.1") || configuredBackend.includes("localhost"))) {
+      await ensureBackendRunning();
+    }
 
     // 1. Try forwarding to external Python Whisper backend if online
     if (backendUrl) {
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 3000);
+        const timeout = setTimeout(() => controller.abort(), 120000); // 120s timeout for large uploads
         const forwardFormData = new FormData();
         if (file) {
           forwardFormData.append("file", file);
@@ -30,7 +36,9 @@ export async function POST(request: NextRequest) {
           const data = await res.json();
           return NextResponse.json(data);
         }
-      } catch {}
+      } catch (err: any) {
+        console.warn("[Upload Proxy] Note:", err.message);
+      }
     }
 
     // 2. Cloud Serverless Fallback (instant acknowledgment)

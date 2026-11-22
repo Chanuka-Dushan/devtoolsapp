@@ -1,26 +1,14 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { Inter, JetBrains_Mono } from "next/font/google";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { ThemeScript } from "@/components/layout/ThemeToggle";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import "./globals.css";
 
-// ─── Fonts ────────────────────────────────────────────────────────────────────
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-  fallback: ["system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
-  display: "swap",
-  fallback: ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "monospace"],
-});
+// ─── Font CSS Variables ────────────────────────────────────────────────────────
+// Using system-backed font stacks guarantees zero build failures when offline
+const fontVariables = "font-sans";
 
 // ─── Site Metadata ────────────────────────────────────────────────────────────
 export const metadata: Metadata = {
@@ -101,7 +89,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${jetbrainsMono.variable} h-full`}
+      className="h-full"
       suppressHydrationWarning
     >
       <head>

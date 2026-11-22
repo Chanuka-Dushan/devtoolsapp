@@ -47,6 +47,10 @@ interface SidebarProps {
   isTranscribing: boolean;
   whisperProgress: string;
   progressPercentage?: number;
+  whisperModel?: string;
+  onUpdateWhisperModel?: (model: string) => void;
+  whisperLang?: string;
+  onUpdateWhisperLang?: (lang: string) => void;
 }
 
 export function Sidebar({
@@ -73,11 +77,20 @@ export function Sidebar({
   isTranscribing,
   whisperProgress,
   progressPercentage = 0,
+  whisperModel: externalModel,
+  onUpdateWhisperModel,
+  whisperLang: externalLang,
+  onUpdateWhisperLang,
 }: SidebarProps) {
   const [activeTab, setActiveTab] = useState<"captions" | "styles" | "filters">("captions");
   const [searchQuery, setSearchQuery] = useState("");
-  const [whisperModel, setWhisperModel] = useState("tiny");
-  const [whisperLang, setWhisperLang] = useState("auto");
+  const [internalModel, setInternalModel] = useState("tiny");
+  const [internalLang, setInternalLang] = useState("auto");
+
+  const whisperModel = externalModel ?? internalModel;
+  const setWhisperModel = onUpdateWhisperModel ?? setInternalModel;
+  const whisperLang = externalLang ?? internalLang;
+  const setWhisperLang = onUpdateWhisperLang ?? setInternalLang;
   const [presetCategory, setPresetCategory] = useState("all");
 
   const filteredCaptions = captions.filter((c) =>

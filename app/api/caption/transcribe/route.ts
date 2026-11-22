@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ensureBackendRunning } from "@/lib/caption/ensureBackend";
 
 interface CaptionWord {
   word: string;
@@ -29,11 +30,18 @@ export async function POST(request: NextRequest) {
     const isProduction = process.env.NODE_ENV === "production";
     const backendUrl = configuredBackend || (!isProduction ? "http://127.0.0.1:8000" : null);
 
+    // In local development, ensure the backend process is running on port 8000
+    if (!isProduction && (!configuredBackend || configuredBackend.includes("127.0.0.1") || configuredBackend.includes("localhost"))) {
+      await ensureBackendRunning();
+    }
+
+    let backendErrorMessage: string | null = null;
+
     // 1. Try external Python Whisper backend if configured (or localhost in dev)
     if (backendUrl) {
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 12000); // 12s timeout
+        const timeout = setTimeout(() => controller.abort(), 300000); // 5 min timeout for Whisper AI transcription
         const forwardFormData = new FormData();
         forwardFormData.append("model_name", modelName);
         if (language && language !== "auto") {
@@ -41,7 +49,8 @@ export async function POST(request: NextRequest) {
         }
         if (videoPath) {
           forwardFormData.append("video_path", videoPath);
-        } else if (file) {
+        }
+        if (file) {
           forwardFormData.append("file", file);
         }
 
@@ -57,9 +66,13 @@ export async function POST(request: NextRequest) {
           if (data.segments && data.segments.length > 0) {
             return NextResponse.json(data);
           }
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          backendErrorMessage = errData.detail || `Backend returned status ${res.status}`;
         }
-      } catch (backendErr) {
-        console.debug("Backend transcribe proxy note:", (backendErr as Error).message);
+      } catch (backendErr: any) {
+        backendErrorMessage = backendErr.message || "Failed to connect to local Whisper backend";
+        console.debug("Backend transcribe proxy note:", backendErrorMessage);
       }
     }
 
@@ -117,73 +130,24 @@ export async function POST(request: NextRequest) {
             });
           }
         }
-      } catch (cloudErr) {
-        console.warn("Cloud Whisper API attempt note:", cloudErr);
+      } catch (cloudErr: any) {
+        console.warn("Cloud Whisper API attempt note:", cloudErr.message);
       }
     }
 
-    // 3. Fallback: Generate intelligent synchronized single-line kinetic frames
-    // This guarantees that hosted sites like magictools.tech never crash or fail on transcription
-    const isSinhala = language === "si";
-    const demoSentences = isSinhala
-      ? [
-          "ඔබට අවශ්‍යද නිවැරදිව උපසිරැසි සාදාගැනීමට",
-          "මෙම වීඩියෝ උපසිරැසි නිර්මාණ මෙවලම මගින්",
-          "ඔබගේ හඬ ඉතාම නිවැරදිව හඳුනාගනී",
-          "සෑම වචනයක්ම තත්පරයෙන් තත්පරයට අනුගත වේ",
-          "නවීන ටික්ටොක් සහ රීල්ස් විලාසිතා සහිතයි",
-          "දැන්ම ඔබගේ වීඩියෝව අපනයනය කරගන්න",
-        ]
-      : [
-          "Welcome to DevTools Caption Studio",
-          "AI speech extraction with millisecond precision",
-          "Dynamic kinetic highlights for maximum retention",
-          "Synced word by word to your natural voice",
-          "Optimized for TikTok Reels and YouTube Shorts",
-          "Export in crystal clear HD ready to share",
-        ];
+    // 3. If no transcription could be generated, return a truthful, helpful error
+    // Never return fake/hardcoded demo captions for a user's uploaded video!
+    const errorDetails = backendErrorMessage
+      ? `Whisper transcription failed: ${backendErrorMessage}`
+      : `AI Caption Backend is unreachable. Please verify that the Python backend is running on port 8000 ('npm run caption:backend'), or set GROQ_API_KEY in your environment for cloud transcription.`;
 
-    let currentTime = 0.0;
-    const fallbackSegments: CaptionSegment[] = [];
-
-    demoSentences.forEach((sentence, sIdx) => {
-      const words = sentence.split(" ");
-      const segmentDuration = Math.max(1.6, words.length * 0.42);
-      const start = Math.round(currentTime * 100) / 100;
-      const end = Math.round((currentTime + segmentDuration) * 100) / 100;
-
-      let wordStart = start;
-      const wordList: CaptionWord[] = words.map((w, wIdx) => {
-        const wDuration = segmentDuration / words.length;
-        const ws = Math.round(wordStart * 100) / 100;
-        const we = Math.round(Math.min(end, wordStart + wDuration) * 100) / 100;
-        wordStart = we;
-        return {
-          word: w,
-          start: ws,
-          end: we,
-          probability: 0.95,
-        };
-      });
-
-      fallbackSegments.push({
-        id: sIdx + 1,
-        start,
-        end,
-        text: sentence,
-        words: wordList,
-      });
-
-      currentTime = end + 0.35; // Short pause between frames
-    });
-
-    return NextResponse.json({
-      success: true,
-      detected_language: isSinhala ? "si" : "en",
-      duration: Math.round(currentTime * 100) / 100,
-      segments: fallbackSegments,
-      mode: "cloud-smart-sync",
-    });
+    return NextResponse.json(
+      {
+        success: false,
+        error: errorDetails,
+      },
+      { status: 503 }
+    );
   } catch (error: any) {
     console.error("Transcribe route error:", error);
     return NextResponse.json(

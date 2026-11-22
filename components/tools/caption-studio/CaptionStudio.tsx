@@ -84,6 +84,8 @@ export function CaptionStudio({
   const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
   const [whisperProgress, setWhisperProgress] = useState<string>("");
   const [progressPercentage, setProgressPercentage] = useState<number>(0);
+  const [whisperModel, setWhisperModel] = useState<string>("tiny");
+  const [whisperLang, setWhisperLang] = useState<string>(initialMode === "sinhala" ? "si" : "auto");
   const [backendOnline, setBackendOnline] = useState<boolean>(true);
   const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
 
@@ -354,7 +356,7 @@ export function CaptionStudio({
 
     // 3. Trigger speech transcription with phased percentage (50% -> 100%)
     try {
-      await triggerAutoTranscribe("tiny", "auto", uploadPath, file, 50);
+      await triggerAutoTranscribe(whisperModel, whisperLang, uploadPath, file, 50);
     } catch (txErr) {
       console.warn("Transcription note:", txErr);
     }
@@ -546,7 +548,9 @@ export function CaptionStudio({
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || `Transcription status: ${res.status}`);
+        const errMsg =
+          err.error || err.detail || err.message || `Transcription status: ${res.status}`;
+        throw new Error(errMsg);
       }
 
       const data = await res.json();
@@ -557,9 +561,17 @@ export function CaptionStudio({
       }
       if (data.segments && data.segments.length > 0) {
         setCaptions(data.segments);
+        setSelectedCaptionId(data.segments[0].id);
         if (data.duration) {
           setDuration(data.duration);
           setTrimEnd(data.duration);
+        }
+
+        // Auto-apply Sinhala modern style if Sinhala was detected or transcribed
+        if (data.detected_language === "si" || language === "si") {
+          const sinhalaPreset =
+            STYLE_PRESETS.find((p) => p.id === "sinhala-modern") || STYLE_PRESETS[3];
+          setStyle(sinhalaPreset);
         }
 
         // 2. Consume credit ONLY upon verified successful caption generation
@@ -788,6 +800,10 @@ export function CaptionStudio({
             isTranscribing={isTranscribing}
             whisperProgress={whisperProgress}
             progressPercentage={progressPercentage}
+            whisperModel={whisperModel}
+            onUpdateWhisperModel={setWhisperModel}
+            whisperLang={whisperLang}
+            onUpdateWhisperLang={setWhisperLang}
           />
         </div>
 
